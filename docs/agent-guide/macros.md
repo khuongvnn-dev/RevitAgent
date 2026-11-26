@@ -35,13 +35,14 @@ Traps: without `wait_window`, `run-addin-command` lists dialogs right after post
 `run-revit-command` posts the command exactly as given: no search, so the name must be exact (case-insensitive). An unknown name gives `NOT_FOUND`. Examples (names from the Revit API `PostableCommand` enum):
 
 ```json
-{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "VisibilityOrGraphics", "wait_window": "Visibility/Graphics" } } }
-{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "ReviewWarnings", "wait_window": "Warnings" } } }
+{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "VisibilityOrGraphics", "wait_window": "Visibility/Graphic Overrides" } } }
+{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "ReviewWarnings" } } }
 { "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "ScheduleOrQuantities", "wait_window": "New Schedule" } } }
 ```
 
 - Other names: `CloseInactiveViews`, `ManageLinks`, `ProjectUnits`. A command id (`ID_OBJECTS_WALL`, an add-in's `CustomCtrl_%...`) works in the same `command` field.
-- `wait_window` is a title substring and depends on the Revit language; without it the dialogs are listed right after posting and the command may not have opened anything yet. The dialog stays open: close it with `revit_handle_dialog` or the UI tools.
+- `wait_window` is a title substring and depends on the Revit language. Verified on Revit 2024.3 (English): the V/G dialog is titled "Visibility/Graphic Overrides for <view>", but Review Warnings is titled only "Autodesk Revit 2024", which also matches the main window; do not pass `wait_window` for it, call `revit_list_dialogs` after the macro instead.
+- Without `wait_window` the dialogs are listed right after posting and the command may not have opened anything yet. The dialog stays open: close it with `revit_handle_dialog` or the UI tools.
 - Commands that save, synchronize or close the model are refused (`PERMISSION_DENIED`).
 
 ### Read a large schedule page by page

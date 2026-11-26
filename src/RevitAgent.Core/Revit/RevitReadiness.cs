@@ -590,7 +590,8 @@ public sealed class RevitReadiness : IRevitReadiness
     public string? Capture(int pid, WindowInfo window, string tag, string? dir = null)
     {
         // No explicit folder: the current run of that Revit (its model copy was opened there), else captures\dialogs.
-        var folder = dir ?? _evidence.EvidenceDirFor(null, pid) ?? Path.Combine(_paths.CapturesDir, "dialogs");
+        // The calling session's run wins (e.g. revit_launch before any model is open), then the run of that Revit's model copy.
+        var folder = dir ?? _evidence.EvidenceDirFor(EvidenceService.CurrentCaller?.SessionId, pid) ?? Path.Combine(_paths.CapturesDir, "dialogs");
         var safeTag = Regex.Replace(tag, "[^A-Za-z0-9_.-]", "_");
         var path = EvidenceService.FindEvidenceDir(Path.Combine(Path.GetFullPath(folder), "x")) is not null
             ? Path.Combine(folder, EvidenceService.FileName(EvidenceService.CurrentCaller?.Tool ?? "gateway", $"dialog-{safeTag}-pid{pid}-{window.HwndHex}", ".png"))
