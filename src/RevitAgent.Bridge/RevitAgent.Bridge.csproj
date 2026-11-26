@@ -1,0 +1,97 @@
+<Project>
+  <!--
+    RevitAgent Bridge (Revit add-in): one source tree, one build per Revit year.
+
+      dotnet build src/RevitAgent.Bridge/RevitAgent.Bridge.csproj -c Release -p:RevitVersion=2022
+
+    2022, 2023, 2024 -> net48;  2025, 2026 -> net8.0-windows.
+    Default RevitVersion is 2024, so `dotnet build RevitAgent.slnx` keeps building one Bridge.
+    Output: bin\<Configuration>\R<yy>\RevitAgent.Bridge.dll (+ .pdb) and nothing else: the Bridge must
+    not ship third-party DLLs (other add-ins in the same Revit ship conflicting System.Text.Json /
+    Newtonsoft versions), so it references only the BCL and the Revit API (compile-time only).
+    Intermediate files are separated per year (obj\R<yy>\) so years can be built back to back.
+    scripts/build-bridge.ps1 builds every year.
+  -->
+  <PropertyGroup>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2024</RevitVersion>
+    <RevitYearShort>$(RevitVersion.Substring(2))</RevitYearShort>
+    <BaseIntermediateOutputPath>obj\R$(RevitYearShort)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <TargetFramework Condition="'$(RevitVersion)' &gt;= '2025'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)' &lt; '2025'">net48</TargetFramework>
+    <AssemblyName>RevitAgent.Bridge</AssemblyName>
+    <RootNamespace>RevitAgent.Bridge</RootNamespace>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutputPath>bin\$(Configuration)\R$(RevitYearShort)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+    <Description>RevitAgent Bridge add-in for Revit $(RevitVersion)</Description>
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+    <DefineConstants Condition="'$(RevitVersion)' &gt;= '2023'">$(DefineConstants);REVIT2023_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="'$(RevitVersion)' &gt;= '2024'">$(DefineConstants);REVIT2024_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="'$(RevitVersion)' &gt;= '2025'">$(DefineConstants);REVIT2025_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="'$(RevitVersion)' &gt;= '2026'">$(DefineConstants);REVIT2026_OR_GREATER</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    Reference-only Revit API packages (they contain ref\ assemblies only; nothing is copied).
+    net48 ignores versions of the (not strong-named) Revit assemblies, so 2022-2024 use the latest update.
+    On .NET 8 a reference to a HIGHER assembly version than the one Revit loaded fails to bind, so 2025/2026
+    compile against the first release (GA) packages and load on every update of that year.
+  -->
+  <PropertyGroup>
+    <RevitApiVersion Condition="'$(RevitVersion)' == '2022'">2022.1.80</RevitApiVersion>
+    <RevitApiVersion Condition="'$(RevitVersion)' == '2023'">2023.1.90</RevitApiVersion>
+    <RevitApiVersion Condition="'$(RevitVersion)' == '2024'">2024.3.60</RevitApiVersion>
+    <RevitApiVersion Condition="'$(RevitVersion)' == '2025'">2025.0.2</RevitApiVersion>
+    <RevitApiVersion Condition="'$(RevitVersion)' == '2026'">2026.0.4</RevitApiVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitApiVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitApiVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Nice3point.Revit.Api.AdWindows" Version="$(RevitApiVersion)" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- AdWindows (ribbon) types derive from WPF types. -->
+    <Reference Include="PresentationCore" Private="false" />
+    <Reference Include="PresentationFramework" Private="false" />
+    <Reference Include="WindowsBase" Private="false" />
+    <Reference Include="System.Xaml" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net48'">
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
+  </ItemGroup>
+
+  <!-- Shared wire format (dependency-free), compiled in from Contracts as source. -->
+  <ItemGroup>
+    <Compile Include="..\RevitAgent.Contracts\Bridge\BridgeWire.cs" Link="Shared\BridgeWire.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\BridgePipeNames.cs" Link="Shared\BridgePipeNames.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\CommandSafety.cs" Link="Shared\CommandSafety.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\ScheduleHeader.cs" Link="Shared\ScheduleHeader.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\WireJson.cs" Link="Shared\WireJson.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\WireFraming.cs" Link="Shared\WireFraming.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\BridgeServerCore.cs" Link="Shared\BridgeServerCore.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Protocol\GatewayErrorCodes.cs" Link="Shared\GatewayErrorCodes.cs" />
+  </ItemGroup>
+
+  <Target Name="ValidateRevitVersion" BeforeTargets="CollectPackageReferences;Build">
+    <Error Condition="'$(RevitApiVersion)' == ''" Text="Unsupported RevitVersion '$(RevitVersion)'. Supported: 2022, 2023, 2024, 2025, 2026." />
+  </Target>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

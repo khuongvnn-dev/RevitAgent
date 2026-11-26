@@ -1,0 +1,58 @@
+# Built-in macro (embedded in RevitAgent.Core). Format: docs/agent-guide/macros.md
+name: create-schedule
+summary: Create a schedule view (category + fields, optional sort) through the Bridge and read its rows back.
+description: >-
+  Creates a new schedule in the active (or given) document with schedule_create, then reads it with schedule_read.
+  It changes the model (a new view): work on a sandbox copy. If unsure whether Revit can schedule the category,
+  check it with schedule_list_schedulable_categories. Field names are parameter names as Revit shows them in
+  Schedule Properties (e.g. Name, Elevation for Levels).
+requires: [bridge]
+params:
+  pid:
+    type: integer
+    required: true
+    description: Revit process id (revit_list_instances).
+  category:
+    type: string
+    required: true
+    description: BuiltInCategory (e.g. OST_Rooms) or category display name.
+  fields:
+    type: array
+    required: true
+    description: Field (parameter) names in column order, e.g. [Level, Number, Name].
+  sort_by:
+    type: array
+    description: Fields to sort by, in order (each must be in fields).
+  sort_descending:
+    type: boolean
+    description: Sort descending (default false).
+  name:
+    type: string
+    description: Schedule view name (default chosen by Revit).
+  limit:
+    type: integer
+    default: 100
+    description: Maximum data rows read back (max 1000; heading rows are not counted).
+steps:
+  - id: create
+    tool: schedule_create
+    args:
+      pid: ${pid}
+      category: ${category}
+      fields: ${fields}
+      sort_by: ${sort_by}
+      sort_descending: ${sort_descending}
+      name: ${name}
+  - id: read
+    tool: schedule_read
+    args:
+      pid: ${pid}
+      view_id: ${create.view_id}
+      limit: ${limit}
+returns:
+  view_id: ${create.view_id}
+  name: ${create.name}
+  fields: ${create.fields}
+  data_rows: ${read.body.data_rows}
+  truncated: ${read.body.truncated}
+  rows: ${read.body.rows}

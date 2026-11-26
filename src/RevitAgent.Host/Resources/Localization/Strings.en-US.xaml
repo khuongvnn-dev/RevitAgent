@@ -1,0 +1,387 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Window & Header -->
+    <sys:String x:Key="Str_WindowTitle">RevitAgent Host - MCP Gateway for Revit</sys:String>
+    <sys:String x:Key="Str_HeaderBadgeHost">HOST</sys:String>
+    <sys:String x:Key="Str_HeaderTitle">RevitAgent Dashboard</sys:String>
+    <sys:String x:Key="Str_HeaderVersion">v2.0 MCP Gateway</sys:String>
+
+    <!-- Header Status Badges -->
+    <sys:String x:Key="Str_LblSystemHealth">SYSTEM HEALTH:</sys:String>
+    <sys:String x:Key="Str_BadgeDesktopInteractive">Desktop Interactive</sys:String>
+    <sys:String x:Key="Str_BadgeDesktopLocked">Desktop Locked / Disconnected</sys:String>
+    <sys:String x:Key="Str_BadgePipeOffline">Pipe: Offline</sys:String>
+    <sys:String x:Key="Str_BadgeBridgeConnected">Bridge: Connected</sys:String>
+    <sys:String x:Key="Str_BadgeBridgeDisconnected">Bridge: Disconnected</sys:String>
+    <sys:String x:Key="Str_BadgeUacStandby">UAC: Standby</sys:String>
+    <sys:String x:Key="Str_BadgeUacMatched">UAC: Matched</sys:String>
+    <sys:String x:Key="Str_BadgeUacMismatch">UAC: Elevation Mismatch</sys:String>
+
+    <!-- Quick Action Toolbar Buttons (Concise Modern Labels) -->
+    <sys:String x:Key="Str_BtnStartServer">Start Server</sys:String>
+    <sys:String x:Key="Str_BtnStopServer">Stop Server</sys:String>
+    <sys:String x:Key="Str_BtnLaunchRevit">Open Revit</sys:String>
+    <sys:String x:Key="Str_BtnCaptureScreenshot">Screenshot</sys:String>
+    <sys:String x:Key="Str_BtnSandboxFolder">Runs folder</sys:String>
+    <sys:String x:Key="Str_BtnClearLogs">Clear Logs</sys:String>
+
+    <!-- Tooltips (Action - Context - Shortcut) -->
+    <sys:String x:Key="Str_Tooltip_BtnStartServer">Start the MCP gateway: opens the local named pipe so AI clients (through RevitAgent.Shim) can call tools.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnStopServer">Stop the MCP gateway: closes the connected AI sessions.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLaunchRevit">Open a NEW Revit (revit_launch) for the year selected in the "Revit versions &amp; Bridge" card. Never touches the Revit you already have running.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnCaptureScreenshot">Capture the main window of the Revit selected in the list, show it in the right column and save it to the captures folder.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnSandboxFolder">Open the runs folder: where the gateway keeps model copies and the results of every scenario run.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnClearLogs">Clear Display Logs: Clears in-memory timeline log entries from the display view (disk logs remain intact).</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnThemeToggle">Toggle Theme: Switches color palette between Match Windows OS, Dark Mode, and Light Mode.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLangVi">Switch to Vietnamese: changes the whole interface language to Vietnamese.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLangEn">Switch to English: Switch entire user interface to English.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeDesktop">Desktop Interactive State: Checks whether Windows session is unlocked and active to receive input.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeIpc">MCP gateway state: the local named pipe is listening for AI clients.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeBridge">Bridge state: at least one Revit has connected its Bridge to the gateway.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeUac">UAC Elevation Parity Check: Verifies Host and Revit share matching integrity levels (Medium or Elevated) to avoid UIPI message blocking.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnSaveConfig">Save configuration: encrypts the settings with Windows DPAPI and applies the gateway policy immediately.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnReloadConfig">Reload Configuration: Reloads DPAPI encrypted settings from disk at %LOCALAPPDATA%\RevitAgent\appsettings.enc.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnOpenConfigFolder">Open Config Location: Opens the directory containing encrypted DPAPI configuration file in Windows Explorer.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterAll">View all event logs.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterInfo">Filter and show Informational (INFO) events only.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterWarn">Filter and show Warning (WARN) events only.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterError">Filter and show Error (ERROR) events only.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterIpc">Filter and show IPC communication events only.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabDashboard">Switch to the dashboard: running Revit, versions &amp; Bridge, connect an AI.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabNotifications">Switch to in-app system notifications and task history.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabAuditLogs">Switch to real-time execution timeline and IPC audit logs.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabSettings">Switch to settings: language, theme, gateway policy and DPAPI encrypted configuration.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnClearNotifications">Clear all historical notifications.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnMarkAllRead">Mark all notifications as read.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnTestToast">Dispatch sample toast notification to test duration and visual animation.</sys:String>
+
+    <!-- Tab Headers -->
+    <sys:String x:Key="Str_TabDashboard">📊 Dashboard</sys:String>
+    <sys:String x:Key="Str_TabNotifications">🔔 Notifications</sys:String>
+    <sys:String x:Key="Str_TabAuditLogs">📜 Audit Logs</sys:String>
+    <sys:String x:Key="Str_TabSettings">⚙️ Settings</sys:String>
+
+    <!-- Notifications Tab & In-App Toast -->
+    <sys:String x:Key="Str_CardNotificationsHistory">SYSTEM NOTIFICATIONS HISTORY</sys:String>
+    <sys:String x:Key="Str_NotificationCountFmt">{0} notifications</sys:String>
+    <sys:String x:Key="Str_BtnClearAllNotifications">Clear All</sys:String>
+    <sys:String x:Key="Str_BtnMarkAllRead">Mark All Read</sys:String>
+    <sys:String x:Key="Str_TxtNoNotifications">No notifications yet. System alerts and operation milestones will appear here.</sys:String>
+    <sys:String x:Key="Str_ToastConfigSavedTitle">System Configuration</sys:String>
+    <sys:String x:Key="Str_SecNotificationSettings">IN-APP TOAST NOTIFICATION DURATION</sys:String>
+    <sys:String x:Key="Str_LblNotificationDuration">Toast Auto-dismiss Duration (seconds):</sys:String>
+    <sys:String x:Key="Str_BtnTestToast">Test Toast</sys:String>
+
+    <!-- Dashboard: Revit Process & UAC Guard -->
+
+    <!-- Dashboard: Telegram Gatekeeper -->
+
+    <!-- Dashboard: Recent Screenshot & Logs -->
+    <sys:String x:Key="Str_CardRecentScreenshot">RECENT SCREENSHOT</sys:String>
+    <sys:String x:Key="Str_TxtNoScreenshot">No screenshot captured yet</sys:String>
+    <sys:String x:Key="Str_CardExecutionLogs">REALTIME EXECUTION LOGS (TIMELINE &amp; IPC AUDIT)</sys:String>
+
+    <!-- Log Filters & Search -->
+    <sys:String x:Key="Str_FilterAll">All</sys:String>
+    <sys:String x:Key="Str_FilterInfo">Info</sys:String>
+    <sys:String x:Key="Str_FilterSuccess">✓ Success</sys:String>
+    <sys:String x:Key="Str_FilterWarn">Warn</sys:String>
+    <sys:String x:Key="Str_FilterError">Error</sys:String>
+    <sys:String x:Key="Str_FilterIpc">IPC</sys:String>
+    <sys:String x:Key="Str_SearchPlaceholder">Search events...</sys:String>
+
+    <!-- Log Table Column Headers -->
+    <sys:String x:Key="Str_ColTimestamp">Timestamp</sys:String>
+    <sys:String x:Key="Str_ColCategory">Category</sys:String>
+    <sys:String x:Key="Str_ColAction">Action / Method</sys:String>
+    <sys:String x:Key="Str_ColDetails">Details</sys:String>
+
+    <!-- Settings: Security Banner -->
+    <sys:String x:Key="Str_BannerSecurityTitle">System Configuration Security (Hardware/CurrentUser Bound DPAPI)</sys:String>
+    <sys:String x:Key="Str_BannerSecuritySubtitle">Configuration securely encrypted using Windows DPAPI (CurrentUser + EntropySalt) at %LOCALAPPDATA%\RevitAgent\appsettings.enc</sys:String>
+
+    <!-- Settings: Appearance & Theme -->
+    <sys:String x:Key="Str_SecTheme">APPEARANCE &amp; THEME</sys:String>
+    <sys:String x:Key="Str_LblTheme">Display Theme Mode:</sys:String>
+    <sys:String x:Key="Str_ThemeSystem">💻 Match Windows (OS)</sys:String>
+    <sys:String x:Key="Str_ThemeDark">🌙 Dark Slate</sys:String>
+    <sys:String x:Key="Str_ThemeLight">☀️ Light Clean</sys:String>
+
+    <!-- Settings: Language Selector -->
+    <sys:String x:Key="Str_SecLanguage">LANGUAGE &amp; LOCALIZATION</sys:String>
+    <sys:String x:Key="Str_LblLanguage">Display Language:</sys:String>
+    <sys:String x:Key="Str_LangVietnamese">🇻🇳 Tiếng Việt</sys:String>
+    <sys:String x:Key="Str_LangEnglish">🇬🇧 English</sys:String>
+    <sys:String x:Key="Str_LangSwitchTooltip">Switch display language (Vietnamese / English)</sys:String>
+
+    <!-- Settings: Paths & Environment -->
+
+    <!-- Settings: IPC & Isolation -->
+    <sys:String x:Key="Str_SecIpc">MCP GATEWAY (NAMED PIPE)</sys:String>
+    <sys:String x:Key="Str_LblIpcPipeName">IPC Named Pipe:</sys:String>
+
+    <!-- Settings: Telegram Secrets -->
+
+    <!-- Settings: Actions -->
+    <sys:String x:Key="Str_BtnSaveConfig">Save Configuration</sys:String>
+    <sys:String x:Key="Str_BadgeDpapiSecured">DPAPI Secured</sys:String>
+    <sys:String x:Key="Str_BtnReloadConfig">Reload Config</sys:String>
+    <sys:String x:Key="Str_BtnOpenConfigFolder">Open Encrypted File Location</sys:String>
+
+    <!-- Footer & Status -->
+    <sys:String x:Key="Str_FooterDpapiActive">DPAPI Encrypted Store Active</sys:String>
+    <sys:String x:Key="Str_StatusReady">Ready. AI clients connect through RevitAgent.Shim.</sys:String>
+
+    <!-- Dialogs & Toast Alerts -->
+    <sys:String x:Key="Str_DlgExportLogsTitle">Export Execution Logs (JSON)</sys:String>
+    <sys:String x:Key="Str_StatusConfigSaved">Configuration encrypted and securely saved via DPAPI.</sys:String>
+    <sys:String x:Key="Str_StatusConfigReloaded">Reloaded configuration from disk.</sys:String>
+    <sys:String x:Key="Str_StatusConfigLoaded">Loaded DPAPI secure configuration ({0}).</sys:String>
+    <sys:String x:Key="Str_StatusConfigDefault">No enc configuration file found; using default settings.</sys:String>
+    <sys:String x:Key="Str_EventsCount">{0} events</sys:String>
+
+    <sys:String x:Key="Str_BtnDialogs">Dialogs</sys:String>
+
+    <sys:String x:Key="Str_BtnInstallBridge">Install Bridge</sys:String>
+
+    <sys:String x:Key="Str_BtnUninstallBridge">Uninstall Bridge</sys:String>
+
+    <sys:String x:Key="Str_BtnConnectAi">Connect AI</sys:String>
+
+    <sys:String x:Key="Str_BtnCloseRevit">Close Revit</sys:String>
+
+    <sys:String x:Key="Str_BtnCopyClaudeCommand">Copy Claude Code command</sys:String>
+
+    <sys:String x:Key="Str_BtnCopyClaudeJson">Copy Claude Desktop / Cursor JSON</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnDialogs">List the dialogs blocking the selected Revit (revit_list_dialogs). Read-only: it never clicks a button.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnInstallBridge">Install the Bridge add-in for the selected Revit year (bridge_install).</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnUninstallBridge">Remove the Bridge add-in of the selected Revit year (bridge_uninstall).</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BridgeUnavailable">Bridge installer not available in this build</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnConnectAi">Connect an AI: copies the "claude mcp add revitagent" command to the clipboard.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCloseRevit">Close the selected Revit (revit_close). Only available for a Revit the gateway launched.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCloseRevitForeign">This Revit was not launched by the gateway and may hold your unsaved work: the close button is disabled.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCopyClaudeCommand">Copy: claude mcp add revitagent -- "&lt;path to RevitAgent.Shim.exe&gt;"</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCopyClaudeJson">Copy the mcpServers configuration snippet for Claude Desktop or Cursor.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_RevitList">Running Revit.exe processes (refreshed every 3 s, read-only). Select a row to take a screenshot, list dialogs or close it.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_YearSelector">Installed Revit year: used by Open Revit, Install Bridge and Uninstall Bridge.</sys:String>
+
+    <sys:String x:Key="Str_CardRunningRevit">RUNNING REVIT</sys:String>
+
+    <sys:String x:Key="Str_CardRevitBridge">REVIT VERSIONS &amp; BRIDGE</sys:String>
+
+    <sys:String x:Key="Str_CardConnectAi">CONNECT AN AI CLIENT</sys:String>
+
+    <sys:String x:Key="Str_ColPid">PID</sys:String>
+
+    <sys:String x:Key="Str_ColYear">Year</sys:String>
+
+    <sys:String x:Key="Str_ColDocument">Document</sys:String>
+
+    <sys:String x:Key="Str_ColState">State</sys:String>
+
+    <sys:String x:Key="Str_ColBridge">Bridge</sys:String>
+
+    <sys:String x:Key="Str_ColLaunchedByGateway">Gateway</sys:String>
+
+    <sys:String x:Key="Str_ColBridgeInstalled">Bridge installed</sys:String>
+
+    <sys:String x:Key="Str_LblYear">Revit year:</sys:String>
+
+    <sys:String x:Key="Str_LblGatewayPipe">Gateway named pipe:</sys:String>
+
+    <sys:String x:Key="Str_LblActiveSessions">Active MCP sessions:</sys:String>
+
+    <sys:String x:Key="Str_LblShimPath">RevitAgent.Shim.exe (the AI client launches this):</sys:String>
+
+    <sys:String x:Key="Str_ValShimNotFound">RevitAgent.Shim.exe not found - build the solution (dotnet build) or place it next to the Host.</sys:String>
+
+    <sys:String x:Key="Str_TxtNoRevitRunning">No Revit is running</sys:String>
+
+    <sys:String x:Key="Str_TxtNoRevitInstalled">No installed Revit found</sys:String>
+
+    <sys:String x:Key="Str_RevitCountFmt">{0} running</sys:String>
+
+    <sys:String x:Key="Str_TitleRevit">Revit</sys:String>
+
+    <sys:String x:Key="Str_TitleDialogs">Revit dialogs</sys:String>
+
+    <sys:String x:Key="Str_TitleBridge">Revit Bridge</sys:String>
+
+    <sys:String x:Key="Str_TitleConnectAi">Connect an AI</sys:String>
+
+    <sys:String x:Key="Str_MsgSelectRevit">Select a Revit in the list first.</sys:String>
+
+    <sys:String x:Key="Str_MsgSelectYear">Select an installed Revit year first.</sys:String>
+
+    <sys:String x:Key="Str_MsgNoMainWindow">Revit PID {0} has no main window to capture yet.</sys:String>
+
+    <sys:String x:Key="Str_MsgCaptureSaved">Screenshot saved: {0}</sys:String>
+
+    <sys:String x:Key="Str_MsgCaptureFailed">Could not capture the Revit window (closed?).</sys:String>
+
+    <sys:String x:Key="Str_MsgDialogsNone">Revit PID {0} has no blocking dialog.</sys:String>
+
+    <sys:String x:Key="Str_MsgDialogsCount">{0} dialog(s) blocking Revit PID {1}.</sys:String>
+
+    <sys:String x:Key="Str_MsgToolFailed">{0} failed: {1}</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunching">Opening Revit {0}... (can take a few minutes)</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunched">Revit {0} is ready (PID {1}).</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunchNotReady">Revit is not ready: {0}</sys:String>
+
+    <sys:String x:Key="Str_MsgClosed">Closed Revit PID {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgBridgeInstalled">Bridge installed for Revit {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgBridgeRemoved">Bridge removed from Revit {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgCopied">Copied to the clipboard.</sys:String>
+
+    <sys:String x:Key="Str_MsgCopiedNoShim">Copied, but RevitAgent.Shim.exe was not found: build the solution and check the path.</sys:String>
+
+    <sys:String x:Key="Str_MsgGatewayStopped">The MCP gateway has stopped.</sys:String>
+
+    <sys:String x:Key="Str_MsgGatewayListening">The MCP gateway is listening on {0}</sys:String>
+
+    <sys:String x:Key="Str_SecGatewayPolicy">GATEWAY POLICY</sys:String>
+
+    <sys:String x:Key="Str_LblMaxPermission">Maximum tool permission:</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_MaxPermission">Read &lt; Interact &lt; Write &lt; Admin. Tools that need more than this are denied for every AI client (including the dashboard Open Revit button, which needs Admin).</sys:String>
+
+    <sys:String x:Key="Str_NoteMaxPermission">Read: observe only. Interact: drive the UI. Write: change models/files. Admin: launch/close Revit, install Bridge.</sys:String>
+
+    <sys:String x:Key="Str_ChkEnforceSandbox">Enforce sandbox</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_EnforceSandbox">Write tools may only open/change documents inside the runs folder (copies). Recommended.</sys:String>
+
+    <sys:String x:Key="Str_NoteEnforceSandbox">Write tools only work on model copies inside the runs folder.</sys:String>
+
+
+
+
+    <!-- Add-in allowlist page (lane S1) -->
+    <sys:String x:Key="Str_TabAddins">🛡 Allowed add-ins</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabAddins">Unsigned add-ins the gateway may let Revit load when it starts Revit itself.</sys:String>
+    <sys:String x:Key="Str_AddinTitle">Allowed add-ins (Security - Unsigned Add-In)</sys:String>
+    <sys:String x:Key="Str_AddinHelp">When a Revit started by the gateway shows the "Security - Unsigned Add-In" dialog: a listed add-in (matching name and path) gets "Load Once"; an add-in that is not listed gets "Do Not Load". A Revit you started yourself is never touched. Only you can edit this list here - AI agents can read it but never add to it. Every button the gateway presses is audited with a screenshot.</sys:String>
+    <sys:String x:Key="Str_AddinLblName">Add-in name</sys:String>
+    <sys:String x:Key="Str_AddinLblPath">DLL file / path pattern</sys:String>
+    <sys:String x:Key="Str_AddinLblFolder">Folder replaced by *</sys:String>
+    <sys:String x:Key="Str_AddinLblPreview">Pattern to save</sys:String>
+    <sys:String x:Key="Str_AddinLblNote">Note</sys:String>
+    <sys:String x:Key="Str_AddinTipName">Exactly the "Name:" line of Revit's dialog, e.g. MyAddin.App (case-insensitive).</sys:String>
+    <sys:String x:Key="Str_AddinTipPath">Full path of the DLL, or a pattern with * (one folder level), ** (any levels), ? (one character).</sys:String>
+    <sys:String x:Key="Str_AddinChkPattern">Turn one folder into a * pattern (e.g. the worktree folder that changes per ticket)</sys:String>
+    <sys:String x:Key="Str_AddinBtnBrowse">Browse DLL...</sys:String>
+    <sys:String x:Key="Str_AddinBtnSave">Save</sys:String>
+    <sys:String x:Key="Str_AddinBtnClear">Clear form</sys:String>
+    <sys:String x:Key="Str_AddinBtnReload">Reload</sys:String>
+    <sys:String x:Key="Str_AddinBtnEdit">Edit</sys:String>
+    <sys:String x:Key="Str_AddinBtnRemove">Remove</sys:String>
+    <sys:String x:Key="Str_AddinListTitle">Active list</sys:String>
+    <sys:String x:Key="Str_AddinColEnabled">On</sys:String>
+    <sys:String x:Key="Str_AddinColName">Name</sys:String>
+    <sys:String x:Key="Str_AddinColPattern">Path / pattern</sys:String>
+    <sys:String x:Key="Str_AddinColNote">Note</sys:String>
+    <sys:String x:Key="Str_AddinColAdded">Added</sys:String>
+    <sys:String x:Key="Str_AddinErrName">Enter the add-in name.</sys:String>
+    <sys:String x:Key="Str_AddinErrPattern">Invalid path / pattern:</sys:String>
+    <sys:String x:Key="Str_AddinErrGone">This entry is no longer in the file (changed elsewhere). The list was reloaded.</sys:String>
+    <sys:String x:Key="Str_AddinSaved">Add-in list saved.</sys:String>
+    <sys:String x:Key="Str_AddinRemoved">Removed from the list.</sys:String>
+    <sys:String x:Key="Str_AddinConfirmRemove">Remove add-in '{0}' from the allowed list?</sys:String>
+
+    <sys:String x:Key="Str_CardActionGrant">Let AI act on my Revit</sys:String>
+    <sys:String x:Key="Str_NoteActionGrant">By default AI may only READ a Revit you started yourself. Enable to let AI click/type/run commands for a limited time (kept in Host memory only; restarting the Host clears it).</sys:String>
+    <sys:String x:Key="Str_GrantAllRevit">All my Revit</sys:String>
+    <sys:String x:Key="Str_Grant15m">15 min</sys:String>
+    <sys:String x:Key="Str_Grant1h">1 hour</sys:String>
+    <sys:String x:Key="Str_Grant4h">4 hours</sys:String>
+    <sys:String x:Key="Str_GrantUntilOff">Until turned off</sys:String>
+    <sys:String x:Key="Str_GrantRemainingFmt">{0} left</sys:String>
+    <sys:String x:Key="Str_BtnGrantAction">Allow AI</sys:String>
+    <sys:String x:Key="Str_BtnRevokeGrant">Revoke</sys:String>
+
+    <!-- Telegram Channel -->
+    <sys:String x:Key="Str_SecTg">TELEGRAM CHANNEL (NOTIFICATIONS &amp; ESCALATION)</sys:String>
+    <sys:String x:Key="Str_ChkTgEnabled">Enable Telegram channel</sys:String>
+    <sys:String x:Key="Str_LblTgToken">Bot Token (DPAPI encrypted):</sys:String>
+    <sys:String x:Key="Str_LblTgChatId">Owner Chat ID:</sys:String>
+    <sys:String x:Key="Str_LblTgTimeout">Ask timeout (minutes):</sys:String>
+    <sys:String x:Key="Str_BtnTgTest">Send Test</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgEnabled">Enable or disable notifications and human escalation via Telegram.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgToken">Secret bot token from @BotFather. Encrypted securely with Windows DPAPI (CurrentUser).</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgChatId">Telegram chat ID of the owner. Only callback answers and messages from this chat are accepted.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgTimeout">Timeout before automatically selecting the safe option (default 30 minutes).</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgTest">Send a test message to verify Telegram bot token and chat ID connectivity.</sys:String>
+    <sys:String x:Key="Str_MsgTgUnconfigured">Bot token or Chat ID is missing.</sys:String>
+    <sys:String x:Key="Str_MsgTgTestSuccess">Test message sent successfully!</sys:String>
+    <sys:String x:Key="Str_MsgTgTestFailed">Test message failed: {0}</sys:String>
+    <!-- Run Data Store & History (lane G3) -->
+    <sys:String x:Key="Str_TabRunHistory">Run History</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabRunHistory">View history of scenario and sandbox runs</sys:String>
+    <sys:String x:Key="Str_CardRunHistory">Run History</sys:String>
+    <sys:String x:Key="Str_BtnOpenReport">Open Report</sys:String>
+    <sys:String x:Key="Str_BtnOpenFolder">Open Folder</sys:String>
+    <sys:String x:Key="Str_FilterSuite">Filter by suite or id...</sys:String>
+    <sys:String x:Key="Str_FilterVerdict">Verdict</sys:String>
+    <sys:String x:Key="Str_SecRunStore">RUN DATA STORE</sys:String>
+    <sys:String x:Key="Str_LblRunStoreRoot">Run data directory:</sys:String>
+    <sys:String x:Key="Str_BtnBrowse">Browse...</sys:String>
+    <sys:String x:Key="Str_TxtNoRuns">No run data available.</sys:String>
+    <sys:String x:Key="Str_ColRunId">Run ID</sys:String>
+    <sys:String x:Key="Str_ColSuite">Suite</sys:String>
+    <sys:String x:Key="Str_ColTrigger">Trigger</sys:String>
+    <sys:String x:Key="Str_ColStarted">Started</sys:String>
+    <sys:String x:Key="Str_ColDuration">Duration</sys:String>
+    <sys:String x:Key="Str_ColActions">Actions</sys:String>
+
+    <!-- Scenario Runner & Nightly Schedule (lane W2-C) -->
+    <sys:String x:Key="Str_TabScenarioRunner">Run Scenarios</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabScenarioRunner">Manage scenario library and nightly automated schedules</sys:String>
+    <sys:String x:Key="Str_ScenarioLibraryTitle">Test Scenario Library</sys:String>
+    <sys:String x:Key="Str_ScenarioLibraryFolder">Folder:</sys:String>
+    <sys:String x:Key="Str_BtnSelectAll">Select All</sys:String>
+    <sys:String x:Key="Str_BtnSelectNone">Deselect All</sys:String>
+    <sys:String x:Key="Str_ColScenarioName">Scenario / Suite Name</sys:String>
+    <sys:String x:Key="Str_ColRevitVer">Revit</sys:String>
+    <sys:String x:Key="Str_ColLastVerdict">Last Verdict</sys:String>
+    <sys:String x:Key="Str_ColLastRunTime">Last Run Time</sys:String>
+    <sys:String x:Key="Str_ColDescription">Description</sys:String>
+    <sys:String x:Key="Str_BtnRunBatch">Run Selected</sys:String>
+    <sys:String x:Key="Str_BtnStopBatch">Stop</sys:String>
+    <sys:String x:Key="Str_LabelElapsed">Elapsed:</sys:String>
+    <sys:String x:Key="Str_LabelProgress">Progress:</sys:String>
+    <sys:String x:Key="Str_LabelCurrentStep">Current Step:</sys:String>
+    <sys:String x:Key="Str_BtnViewHistory">View in Run History</sys:String>
+    <sys:String x:Key="Str_BtnOpenLastRun">Open Last Run Folder</sys:String>
+    <sys:String x:Key="Str_ScheduleTitle">Nightly Schedule</sys:String>
+    <sys:String x:Key="Str_ScheduleSubtitle">Automatically run scenarios at scheduled time</sys:String>
+    <sys:String x:Key="Str_ScheduleEnableToggle">Enable nightly automated schedule</sys:String>
+    <sys:String x:Key="Str_ScheduleTimeLabel">Run Time (HH:mm):</sys:String>
+    <sys:String x:Key="Str_ScheduleRevitYearLabel">Revit Version Year:</sys:String>
+    <sys:String x:Key="Str_ScheduleDaysLabel">Days of Week:</sys:String>
+    <sys:String x:Key="Str_ScheduleNextRunLabel">NEXT SCHEDULED RUN</sys:String>
+    <sys:String x:Key="Str_BtnSaveSchedule">Save Schedule Settings</sys:String>
+    <sys:String x:Key="Str_ScheduleNoticeTitle">Unattended Run Requirement:</sys:String>
+    <sys:String x:Key="Str_ScheduleNoticeBody">RevitAgent Host must remain running and the desktop unlocked for UI automation (run scripts\check-unattended.ps1 to verify).</sys:String>
+    <sys:String x:Key="Str_SecScenarioLibrary">SCENARIO LIBRARY FOLDER</sys:String>
+    <sys:String x:Key="Str_LblScenarioLibraryDir">Scenario library folder:</sys:String>
+
+</ResourceDictionary>

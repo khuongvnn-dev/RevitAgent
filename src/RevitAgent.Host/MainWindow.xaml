@@ -1,0 +1,1597 @@
+<Window x:Class="RevitAgent.Host.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RevitAgent.Host"
+        xmlns:viewmodels="clr-namespace:RevitAgent.Host.ViewModels"
+        xmlns:converters="clr-namespace:RevitAgent.Host.Converters"
+        xmlns:controls="clr-namespace:RevitAgent.Host.Controls"
+        xmlns:views="clr-namespace:RevitAgent.Host.Views"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=viewmodels:MainViewModel}"
+        Title="{DynamicResource Str_WindowTitle}" 
+        Height="800" Width="1200"
+        MinHeight="680" MinWidth="1020"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BrushWindowBg}"
+        Foreground="{DynamicResource BrushTextPrimary}"
+        FontFamily="Segoe UI"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        ToolTipService.InitialShowDelay="200"
+        ToolTipService.ShowDuration="12000"
+        ToolTipService.BetweenShowDelay="100">
+
+    <Window.Resources>
+        <!-- Value Converters -->
+        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+        
+        <!-- Desktop Badge Converters (DynamicResource via DependencyProperties) -->
+        <converters:BoolToBrushConverter x:Key="DesktopBadgeBgConverter"
+            TrueBrush="{DynamicResource BrushSuccessBg}" FalseBrush="{DynamicResource BrushDangerBg}"/>
+        <converters:BoolToBrushConverter x:Key="DesktopBadgeBorderConverter"
+            TrueBrush="{DynamicResource BrushSuccessBorder}" FalseBrush="{DynamicResource BrushDangerBorder}"/>
+        <converters:BoolToBrushConverter x:Key="DesktopDotFillConverter"
+            TrueBrush="{DynamicResource BrushSuccessDot}" FalseBrush="{DynamicResource BrushDangerDot}"/>
+        <converters:BoolToBrushConverter x:Key="DesktopTextBrushConverter"
+            TrueBrush="{DynamicResource BrushSuccessText}" FalseBrush="{DynamicResource BrushDangerText}"/>
+
+        <!-- IPC Badge Converters -->
+        <converters:BoolToBrushConverter x:Key="IpcBadgeBgConverter"
+            TrueBrush="{DynamicResource BrushSuccessBg}" FalseBrush="{DynamicResource BrushOfflineBg}"/>
+        <converters:BoolToBrushConverter x:Key="IpcBadgeBorderConverter"
+            TrueBrush="{DynamicResource BrushSuccessBorder}" FalseBrush="{DynamicResource BrushOfflineBorder}"/>
+        <converters:BoolToBrushConverter x:Key="IpcDotFillConverter"
+            TrueBrush="{DynamicResource BrushSuccessDot}" FalseBrush="{DynamicResource BrushOfflineDot}"/>
+        <converters:BoolToBrushConverter x:Key="IpcTextBrushConverter"
+            TrueBrush="{DynamicResource BrushSuccessText}" FalseBrush="{DynamicResource BrushOfflineText}"/>
+
+        <!-- Bridge Badge Converters -->
+        <converters:BoolToBrushConverter x:Key="BridgeBadgeBgConverter"
+            TrueBrush="{DynamicResource BrushSuccessBg}" FalseBrush="{DynamicResource BrushOfflineBg}"/>
+        <converters:BoolToBrushConverter x:Key="BridgeBadgeBorderConverter"
+            TrueBrush="{DynamicResource BrushSuccessBorder}" FalseBrush="{DynamicResource BrushOfflineBorder}"/>
+        <converters:BoolToBrushConverter x:Key="BridgeDotFillConverter"
+            TrueBrush="{DynamicResource BrushSuccessDot}" FalseBrush="{DynamicResource BrushOfflineDot}"/>
+        <converters:BoolToBrushConverter x:Key="BridgeTextBrushConverter"
+            TrueBrush="{DynamicResource BrushSuccessText}" FalseBrush="{DynamicResource BrushOfflineText}"/>
+
+        <!-- UAC Badge Converters -->
+        <converters:BoolToBrushConverter x:Key="UacBadgeBgConverter"
+            TrueBrush="{DynamicResource BrushSuccessBg}" FalseBrush="{DynamicResource BrushWarningBg}"/>
+        <converters:BoolToBrushConverter x:Key="UacBadgeBorderConverter"
+            TrueBrush="{DynamicResource BrushSuccessBorder}" FalseBrush="{DynamicResource BrushWarningBorder}"/>
+        <converters:BoolToBrushConverter x:Key="UacDotFillConverter"
+            TrueBrush="{DynamicResource BrushSuccessDot}" FalseBrush="{DynamicResource BrushWarningDot}"/>
+        <converters:BoolToBrushConverter x:Key="UacTextBrushConverter"
+            TrueBrush="{DynamicResource BrushSuccessText}" FalseBrush="{DynamicResource BrushWarningText}"/>
+
+        <!-- Status & Visibility Converters -->
+        <converters:BoolToBrushConverter x:Key="StatusSuccessBrushConverter"
+            TrueBrush="{DynamicResource BrushSuccessText}" FalseBrush="{DynamicResource BrushDangerText}"/>
+        <converters:BoolToBrushConverter x:Key="CircuitBreakerBrushConverter"
+            TrueBrush="{DynamicResource BrushDangerText}" FalseBrush="{DynamicResource BrushSuccessText}"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter" Inverted="True"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:NullToVisibilityConverter x:Key="InvertedNullToVisibilityConverter" Inverted="True"/>
+        <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
+        <converters:CountToVisibilityConverter x:Key="CountToInvertedVisibilityConverter" Inverted="True"/>
+
+        <!-- Global ToolTip Style with Auto-wrapping and Drop Shadow -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="{DynamicResource BrushToolTipBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushToolTipText}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushToolTipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="MaxWidth" Value="340"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Direction="270" 
+                                                  Opacity="0.25" Color="#000000"/>
+                            </Border.Effect>
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="LineHeight" Value="18"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Base Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushButtonBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushButtonForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushButtonBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushButtonPressed}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Accent Button -->
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Danger Button -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource BrushDanger}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushDangerForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushDangerHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Warning Button -->
+        <Style x:Key="WarningButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource BrushWarning}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushWarningForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushWarningBorder}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushWarningHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Header Language Switcher Button Base -->
+        <Style x:Key="HeaderLangButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="Margin" Value="1,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HeaderLangButtonVi" TargetType="Button" BasedOn="{StaticResource HeaderLangButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentLanguage}" Value="vi-VN">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HeaderLangButtonEn" TargetType="Button" BasedOn="{StaticResource HeaderLangButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentLanguage}" Value="en-US">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Header Theme Toggle Button -->
+        <Style x:Key="HeaderThemeButton" TargetType="Button" BasedOn="{StaticResource HeaderLangButton}">
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushButtonBg}"/>
+        </Style>
+
+        <!-- Filter Log Level Button Base -->
+        <Style x:Key="FilterButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource BrushButtonBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushButtonBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dynamic Active Filter Buttons -->
+        <Style x:Key="FilterButtonAll" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AuditLogs.CurrentLogLevelFilter}" Value="ALL">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterButtonInfo" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AuditLogs.CurrentLogLevelFilter}" Value="INFO">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterButtonWarn" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AuditLogs.CurrentLogLevelFilter}" Value="WARN">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterButtonError" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AuditLogs.CurrentLogLevelFilter}" Value="ERROR">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterButtonIpc" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AuditLogs.CurrentLogLevelFilter}" Value="IPC">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Notification Level Filter Button Styles -->
+        <Style x:Key="FilterBtnNotifAll" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Notifications.CurrentLevelFilter}" Value="ALL">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterBtnNotifSuccess" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Notifications.CurrentLevelFilter}" Value="SUCCESS">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterBtnNotifInfo" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Notifications.CurrentLevelFilter}" Value="INFO">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterBtnNotifWarn" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Notifications.CurrentLevelFilter}" Value="WARN">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FilterBtnNotifError" TargetType="Button" BasedOn="{StaticResource FilterButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Notifications.CurrentLevelFilter}" Value="ERROR">
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccentForeground}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Toggle Server Button Style -->
+        <Style x:Key="ToggleServerButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Dashboard.IsServerRunning}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BrushDanger}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- TextBox Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushInputBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="TxtBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TxtBorder" Property="BorderBrush" Value="{DynamicResource BrushTextMuted}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="TxtBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- PasswordBox Style -->
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushInputBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="PwdBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PwdBorder" Property="BorderBrush" Value="{DynamicResource BrushTextMuted}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="PwdBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- TabControl Style -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <!-- Tab Headers Bar -->
+                            <Border Grid.Row="0" Background="{DynamicResource BrushHeaderBarBg}" BorderBrush="{DynamicResource BrushHeaderBarBorder}" BorderThickness="1" CornerRadius="8" Padding="4" Margin="0,0,0,10">
+                                <TabPanel IsItemsHost="True" Background="Transparent"/>
+                            </Border>
+                            <!-- Content Area -->
+                            <Border Grid.Row="1" Background="Transparent" BorderThickness="0">
+                                <ContentPresenter ContentSource="SelectedContent"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TabItem Style -->
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="18,8"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="{TemplateBinding Margin}">
+                            <ContentPresenter x:Name="ContentSite"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"
+                                              ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource BrushButtonHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource BrushCardBg}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentPrimary}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- GridViewColumnHeader Style -->
+        <Style TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource BrushButtonBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+        <!-- ListViewItem Style -->
+        <Style TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BrushListItemHover}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BrushListItemHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Row 0: Realtime Status Header -->
+            <RowDefinition Height="Auto"/> <!-- Row 1: Quick Action Toolbar -->
+            <RowDefinition Height="*"/>    <!-- Row 2: TabControl -->
+            <RowDefinition Height="Auto"/> <!-- Row 3: Status Bar Footer -->
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Realtime Status Header (2-Row Layout with Top Bar & Status Sub-bar) -->
+        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Row 0: Branding & Quick Controls -->
+                    <RowDefinition Height="Auto"/> <!-- Row 1: Subtle Divider -->
+                    <RowDefinition Height="Auto"/> <!-- Row 2: Realtime Status Sub-bar -->
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Top Bar -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Branding: Badge + Title + Version Tag -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource BrushButtonBg}" BorderBrush="{DynamicResource BrushAccentPrimary}" BorderThickness="1" CornerRadius="6" Padding="6,3" Margin="0,0,10,0">
+                            <TextBlock Text="{DynamicResource Str_HeaderBadgeHost}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentPrimary}"/>
+                        </Border>
+                        <TextBlock Text="{DynamicResource Str_HeaderTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource BrushButtonBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Str_HeaderVersion}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Quick Controls: 1-Click Theme Toggle + Language Switcher -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Header Theme Switcher Toggle (1-Click Binary Toggle) -->
+                        <Border Background="{DynamicResource BrushButtonBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="2" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <Button Style="{StaticResource HeaderThemeButton}" 
+                                    ToolTip="{DynamicResource Str_Tooltip_BtnThemeToggle}"
+                                    Command="{Binding ToggleThemeCommand}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <controls:IconPresenter IconName="theme_toggle" FallbackGeometry="{StaticResource GeoThemeToggle}" FallbackGlyph="🌓" IconSize="14" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{Binding ThemeToggleText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Border>
+
+                        <!-- Header Language Switcher Toggle -->
+                        <Border Background="{DynamicResource BrushButtonBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="2" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource HeaderLangButtonVi}" 
+                                        Content="🇻🇳 VI"
+                                        ToolTip="{DynamicResource Str_Tooltip_BtnLangVi}"
+                                        Command="{Binding SwitchLanguageCommand}" 
+                                        CommandParameter="vi-VN"/>
+                                <Button Style="{StaticResource HeaderLangButtonEn}" 
+                                        Content="🇬🇧 EN" 
+                                        ToolTip="{DynamicResource Str_Tooltip_BtnLangEn}"
+                                        Command="{Binding SwitchLanguageCommand}" 
+                                        CommandParameter="en-US"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Row 1: Subtle Divider Line -->
+                <Border Grid.Row="1" Height="1" Background="{DynamicResource BrushCardBorder}" Margin="0,8,0,8"/>
+
+                <!-- Row 2: Status Sub-bar (All Status Badges well-spaced on their own row) -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblSystemHealth}" 
+                               FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSubtle}" 
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- 1) Desktop Interactive Badge -->
+                        <Border Background="{Binding IsDesktopAvailable, Converter={StaticResource DesktopBadgeBgConverter}}" 
+                                BorderBrush="{Binding IsDesktopAvailable, Converter={StaticResource DesktopBadgeBorderConverter}}" 
+                                ToolTip="{DynamicResource Str_Tooltip_BadgeDesktop}"
+                                BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="{Binding IsDesktopAvailable, Converter={StaticResource DesktopDotFillConverter}}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding DesktopStatusText}" FontSize="11" FontWeight="SemiBold" 
+                                           Foreground="{Binding IsDesktopAvailable, Converter={StaticResource DesktopTextBrushConverter}}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2) Named Pipe Badge -->
+                        <Border Background="{Binding IsIpcServerRunning, Converter={StaticResource IpcBadgeBgConverter}}" 
+                                BorderBrush="{Binding IsIpcServerRunning, Converter={StaticResource IpcBadgeBorderConverter}}" 
+                                ToolTip="{DynamicResource Str_Tooltip_BadgeIpc}"
+                                BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="{Binding IsIpcServerRunning, Converter={StaticResource IpcDotFillConverter}}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding IpcPipeStatusText}" FontSize="11" FontWeight="SemiBold" 
+                                           Foreground="{Binding IsIpcServerRunning, Converter={StaticResource IpcTextBrushConverter}}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3) Bridge Connection Badge -->
+                        <Border Background="{Binding IsBridgeConnected, Converter={StaticResource BridgeBadgeBgConverter}}" 
+                                BorderBrush="{Binding IsBridgeConnected, Converter={StaticResource BridgeBadgeBorderConverter}}" 
+                                ToolTip="{DynamicResource Str_Tooltip_BadgeBridge}"
+                                BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="{Binding IsBridgeConnected, Converter={StaticResource BridgeDotFillConverter}}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding BridgeStatusText}" FontSize="11" FontWeight="SemiBold" 
+                                           Foreground="{Binding IsBridgeConnected, Converter={StaticResource BridgeTextBrushConverter}}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4) UAC Elevation Parity Badge -->
+                        <Border Background="{Binding IsUacParityMatched, Converter={StaticResource UacBadgeBgConverter}}" 
+                                BorderBrush="{Binding IsUacParityMatched, Converter={StaticResource UacBadgeBorderConverter}}" 
+                                ToolTip="{DynamicResource Str_Tooltip_BadgeUac}"
+                                BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="{Binding IsUacParityMatched, Converter={StaticResource UacDotFillConverter}}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding UacStatusText}" FontSize="11" FontWeight="SemiBold" 
+                                           Foreground="{Binding IsUacParityMatched, Converter={StaticResource UacTextBrushConverter}}"/>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Row 1: Quick Action Toolbar (Minimalist Modern with Mock Icons & Fallback Geometries) -->
+        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="0,0,0,12">
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- 1. Start / Stop Server -->
+                <Button Style="{StaticResource ToggleServerButtonStyle}" 
+                        ToolTip="{DynamicResource Str_Tooltip_BtnStartServer}"
+                        Command="{Binding ToggleServerCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="server_start" FallbackGeometry="{StaticResource GeoServerStart}" FallbackGlyph="▶️" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding Dashboard.ServerToggleText}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 2. Open Revit (revit_launch for the selected installed year) -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnLaunchRevit}" Command="{Binding LaunchRevitCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="launch_revit" FallbackGeometry="{StaticResource GeoLaunchRevit}" FallbackGlyph="🚀" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnLaunchRevit}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 3. Screenshot of the selected running Revit -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnCaptureScreenshot}" Command="{Binding CaptureScreenshotCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="screenshot" FallbackGeometry="{StaticResource GeoScreenshot}" FallbackGlyph="📸" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnCaptureScreenshot}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 4. Dialogs blocking the selected Revit (list only) -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnDialogs}" Command="{Binding ListDialogsCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="dismiss_dialog" FallbackGeometry="{StaticResource GeoDismissDialog}" FallbackGlyph="🛡️" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnDialogs}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 5. Install Bridge (needs bridge_install; disabled otherwise) -->
+                <Button ToolTip="{Binding Dashboard.BridgeInstallTooltip}" ToolTipService.ShowOnDisabled="True" Command="{Binding InstallBridgeCommand}" IsEnabled="{Binding Dashboard.AreBridgeToolsAvailable}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="bridge" FallbackGeometry="{StaticResource GeoBridge}" FallbackGlyph="🔌" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnInstallBridge}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 6. Connect an AI client (copies the Claude Code command) -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnConnectAi}" Command="{Binding CopyClaudeCodeCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="connect_ai" FallbackGeometry="{StaticResource GeoConnect}" FallbackGlyph="🔗" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnConnectAi}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 7. Runs folder -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnSandboxFolder}" Command="{Binding OpenRunsFolderCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="sandbox" FallbackGeometry="{StaticResource GeoSandbox}" FallbackGlyph="📁" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnSandboxFolder}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 8. Clear Logs -->
+                <Button ToolTip="{DynamicResource Str_Tooltip_BtnClearLogs}" Command="{Binding ClearLogsCommand}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <controls:IconPresenter IconName="clear_logs" FallbackGeometry="{StaticResource GeoClearLogs}" FallbackGlyph="🗑️" IconSize="14" Margin="0,0,6,0"/>
+                        <TextBlock Text="{DynamicResource Str_BtnClearLogs}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </WrapPanel>
+        </Border>
+
+        <!-- Row 2: TabControl -->
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+            <!-- Tab 1: Dashboard & Telemetry -->
+            <TabItem Header="{DynamicResource Str_TabDashboard}" ToolTip="{DynamicResource Str_Tooltip_TabDashboard}">
+                <Grid Margin="0,2,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="500"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Column: running Revit, installed versions + Bridge, connect an AI client -->
+                    <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,8,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Orientation="Vertical">
+                                <!-- Card 1: Running Revit -->
+                                <Grid Margin="0,0,0,8">
+                                    <TextBlock Text="{DynamicResource Str_CardRunningRevit}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}"/>
+                                    <TextBlock Text="{Binding Dashboard.RevitCountText}" HorizontalAlignment="Right" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                </Grid>
+                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid>
+                                            <ListView MinHeight="86" MaxHeight="170" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}"
+                                                      ToolTip="{DynamicResource Str_Tooltip_RevitList}"
+                                                      ItemsSource="{Binding Dashboard.RevitInstances}"
+                                                      SelectedItem="{Binding Dashboard.SelectedRevitInstance, Mode=TwoWay}">
+                                                <ListView.View>
+                                                    <GridView>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColPid}" Width="58" DisplayMemberBinding="{Binding Pid}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColYear}" Width="48" DisplayMemberBinding="{Binding YearText}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColDocument}" Width="150" DisplayMemberBinding="{Binding Title}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColState}" Width="92" DisplayMemberBinding="{Binding State}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColBridge}" Width="50" DisplayMemberBinding="{Binding BridgeText}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColLaunchedByGateway}" Width="64" DisplayMemberBinding="{Binding LaunchedText}"/>
+                                                    </GridView>
+                                                </ListView.View>
+                                            </ListView>
+                                            <TextBlock Text="{DynamicResource Str_TxtNoRevitRunning}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                       Foreground="{DynamicResource BrushTextSubtle}" FontSize="11"
+                                                       Visibility="{Binding Dashboard.RevitInstances.Count, Converter={StaticResource CountToInvertedVisibilityConverter}}"/>
+                                        </Grid>
+                                        <WrapPanel Margin="0,8,0,0">
+                                            <Button Content="{DynamicResource Str_BtnCaptureScreenshot}" Margin="0,0,6,4" Padding="8,5"
+                                                    ToolTip="{DynamicResource Str_Tooltip_BtnCaptureScreenshot}"
+                                                    Command="{Binding Dashboard.CaptureScreenshotCommand}"/>
+                                            <Button Content="{DynamicResource Str_BtnDialogs}" Margin="0,0,6,4" Padding="8,5"
+                                                    ToolTip="{DynamicResource Str_Tooltip_BtnDialogs}"
+                                                    Command="{Binding Dashboard.ListDialogsCommand}"/>
+                                            <Button Style="{StaticResource DangerButton}" Content="{DynamicResource Str_BtnCloseRevit}" Margin="0,0,0,4" Padding="8,5"
+                                                    ToolTip="{Binding Dashboard.CloseRevitTooltip}" ToolTipService.ShowOnDisabled="True"
+                                                    Command="{Binding Dashboard.CloseRevitCommand}"/>
+                                        </WrapPanel>
+                                        <ListBox ItemsSource="{Binding Dashboard.DialogResults}" Margin="0,4,0,0" MaxHeight="90"
+                                                 Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}" FontSize="11"
+                                                 Visibility="{Binding Dashboard.HasDialogResults, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 1b: let AI act on the owner's own Revit (time-limited, Host memory only) -->
+                                <TextBlock Text="{DynamicResource Str_CardActionGrant}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,4,0,8"/>
+                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource Str_NoteActionGrant}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" Margin="0,0,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding Dashboard.Grants.Rows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Label}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding Countdown}" Foreground="{DynamicResource BrushTextHeaderAccent}" FontSize="11" FontWeight="Bold"
+                                                                       Visibility="{Binding IsGranted, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                                    Visibility="{Binding IsNotGranted, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                            <ComboBox Width="92" FontSize="11" Margin="0,0,6,0"
+                                                                      Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                                                      ItemsSource="{Binding Options}" DisplayMemberPath="Label"
+                                                                      SelectedItem="{Binding SelectedDuration, Mode=TwoWay}"/>
+                                                            <Button Style="{StaticResource PrimaryButton}" Padding="8,4" Content="{DynamicResource Str_BtnGrantAction}"
+                                                                    Command="{Binding GrantCommand}"/>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1" Style="{StaticResource DangerButton}" Padding="8,4" Content="{DynamicResource Str_BtnRevokeGrant}"
+                                                                Command="{Binding RevokeCommand}"
+                                                                Visibility="{Binding IsGranted, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 2: Revit versions and Bridge -->
+                                <TextBlock Text="{DynamicResource Str_CardRevitBridge}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,4,0,8"/>
+                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid>
+                                            <ListView MinHeight="60" MaxHeight="120" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}"
+                                                      ItemsSource="{Binding Dashboard.InstalledVersions}"
+                                                      SelectedItem="{Binding Dashboard.SelectedInstalled, Mode=TwoWay}">
+                                                <ListView.View>
+                                                    <GridView>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColYear}" Width="60" DisplayMemberBinding="{Binding YearText}"/>
+                                                        <GridViewColumn Header="{DynamicResource Str_ColBridgeInstalled}" Width="80" DisplayMemberBinding="{Binding BridgeText}"/>
+                                                        <GridViewColumn Header="Revit.exe" Width="250" DisplayMemberBinding="{Binding ExePath}"/>
+                                                    </GridView>
+                                                </ListView.View>
+                                            </ListView>
+                                            <TextBlock Text="{DynamicResource Str_TxtNoRevitInstalled}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                       Foreground="{DynamicResource BrushTextSubtle}" FontSize="11"
+                                                       Visibility="{Binding Dashboard.InstalledVersions.Count, Converter={StaticResource CountToInvertedVisibilityConverter}}"/>
+                                        </Grid>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblYear}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <ComboBox Grid.Column="1" FontSize="11"
+                                                      Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                                      ToolTip="{DynamicResource Str_Tooltip_YearSelector}"
+                                                      ItemsSource="{Binding Dashboard.InstalledVersions}" DisplayMemberPath="YearText"
+                                                      SelectedItem="{Binding Dashboard.SelectedInstalled, Mode=TwoWay}"/>
+                                            <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="8,0,0,0" Padding="8,5"
+                                                    Content="{DynamicResource Str_BtnLaunchRevit}" ToolTip="{DynamicResource Str_Tooltip_BtnLaunchRevit}"
+                                                    Command="{Binding Dashboard.LaunchRevitCommand}"/>
+                                        </Grid>
+                                        <ProgressBar IsIndeterminate="True" Height="3" Margin="0,8,0,0"
+                                                     Visibility="{Binding Dashboard.IsLaunching, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <WrapPanel Margin="0,8,0,0">
+                                            <Button Content="{DynamicResource Str_BtnInstallBridge}" Margin="0,0,6,0" Padding="8,5"
+                                                    ToolTip="{Binding Dashboard.BridgeInstallTooltip}" ToolTipService.ShowOnDisabled="True"
+                                                    Command="{Binding Dashboard.InstallBridgeCommand}"/>
+                                            <Button Content="{DynamicResource Str_BtnUninstallBridge}" Padding="8,5" Margin="0"
+                                                    ToolTip="{Binding Dashboard.BridgeUninstallTooltip}" ToolTipService.ShowOnDisabled="True"
+                                                    Command="{Binding Dashboard.UninstallBridgeCommand}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Card 3: Connect an AI client -->
+                                <TextBlock Text="{DynamicResource Str_CardConnectAi}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,4,0,8"/>
+                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,3">
+                                            <TextBlock Text="{DynamicResource Str_LblGatewayPipe}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                            <TextBlock Text="{Binding Dashboard.PipeFullName}" HorizontalAlignment="Right" Foreground="{DynamicResource BrushTextPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                        </Grid>
+                                        <Grid Margin="0,3">
+                                            <TextBlock Text="{DynamicResource Str_LblActiveSessions}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                            <TextBlock Text="{Binding Dashboard.ActiveSessions}" HorizontalAlignment="Right" Foreground="{DynamicResource BrushTextPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                        </Grid>
+                                        <TextBlock Text="{DynamicResource Str_LblShimPath}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" Margin="0,3,0,2"/>
+                                        <TextBlock Text="{Binding Dashboard.ShimText}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"
+                                                   Foreground="{Binding Dashboard.IsShimAvailable, Converter={StaticResource StatusSuccessBrushConverter}}"/>
+                                        <WrapPanel>
+                                            <Button Content="{DynamicResource Str_BtnCopyClaudeCommand}" Margin="0,0,6,4" Padding="8,5"
+                                                    ToolTip="{DynamicResource Str_Tooltip_BtnCopyClaudeCommand}"
+                                                    Command="{Binding Dashboard.CopyClaudeCodeCommand}"/>
+                                            <Button Content="{DynamicResource Str_BtnCopyClaudeJson}" Margin="0,0,0,4" Padding="8,5"
+                                                    ToolTip="{DynamicResource Str_Tooltip_BtnCopyClaudeJson}"
+                                                    Command="{Binding Dashboard.CopyClaudeJsonCommand}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Right Column: Recent Viewport Screenshot -->
+                    <Border Grid.Column="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="4,0,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="{DynamicResource Str_CardRecentScreenshot}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,10"/>
+                            
+                            <Border Grid.Row="1" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
+                                <Grid>
+                                    <Image Source="{Binding Dashboard.ScreenshotPreview}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding Dashboard.HasScreenshot, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                        <TextBlock Text="📷" FontSize="36" HorizontalAlignment="Center" Foreground="{DynamicResource BrushTextSubtle}" Opacity="0.4" Margin="0,0,0,8"/>
+                                        <TextBlock Text="{DynamicResource Str_TxtNoScreenshot}" HorizontalAlignment="Center" Foreground="{DynamicResource BrushTextSubtle}" FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 2: Notifications History -->
+            <TabItem Header="{DynamicResource Str_TabNotifications}" ToolTip="{DynamicResource Str_Tooltip_TabNotifications}">
+                <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,2,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Top Toolbar: Title, Count, Filters, Clear/Mark All -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="{DynamicResource Str_CardNotificationsHistory}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Notifications.NotificationCountDisplay}" HorizontalAlignment="Right" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Level Filters -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource FilterBtnNotifAll}" Content="{DynamicResource Str_FilterAll}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterAll}"
+                                            Command="{Binding Notifications.FilterLevelCommand}" CommandParameter="ALL"/>
+                                    <Button Style="{StaticResource FilterBtnNotifSuccess}" Content="{DynamicResource Str_FilterSuccess}" 
+                                            Command="{Binding Notifications.FilterLevelCommand}" CommandParameter="SUCCESS"/>
+                                    <Button Style="{StaticResource FilterBtnNotifInfo}" Content="{DynamicResource Str_FilterInfo}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterInfo}"
+                                            Command="{Binding Notifications.FilterLevelCommand}" CommandParameter="INFO"/>
+                                    <Button Style="{StaticResource FilterBtnNotifWarn}" Content="{DynamicResource Str_FilterWarn}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterWarn}"
+                                            Command="{Binding Notifications.FilterLevelCommand}" CommandParameter="WARN"/>
+                                    <Button Style="{StaticResource FilterBtnNotifError}" Content="{DynamicResource Str_FilterError}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterError}"
+                                            Command="{Binding Notifications.FilterLevelCommand}" CommandParameter="ERROR"/>
+                                </StackPanel>
+
+                                <!-- Actions: Mark All Read & Clear All -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="{DynamicResource Str_BtnMarkAllRead}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_BtnMarkAllRead}"
+                                            Command="{Binding Notifications.MarkAllAsReadCommand}" Margin="0,0,4,0"/>
+                                    <Button Content="{DynamicResource Str_BtnClearAllNotifications}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_BtnClearNotifications}"
+                                            Command="{Binding Notifications.ClearAllCommand}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Content: Empty State vs ListView -->
+                        <Grid Grid.Row="1">
+                            <!-- Empty State -->
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding Notifications.HasNotifications, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <TextBlock Text="🔕" FontSize="44" HorizontalAlignment="Center" Foreground="{DynamicResource BrushTextSubtle}" Opacity="0.35" Margin="0,0,0,8"/>
+                                <TextBlock Text="{DynamicResource Str_TxtNoNotifications}" FontSize="12" Foreground="{DynamicResource BrushTextSubtle}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Notifications ListView -->
+                            <ListView Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" 
+                                      Foreground="{DynamicResource BrushTextPrimary}"
+                                      ItemsSource="{Binding Notifications.NotificationsView}"
+                                      Visibility="{Binding Notifications.HasNotifications, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Glyph / Icon -->
+                                                <TextBlock Grid.Column="0" Text="{Binding IconGlyph}" FontSize="16" FontWeight="Bold" Margin="0,0,12,0" VerticalAlignment="Top">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource BrushAccentPrimary}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Success">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastSuccess}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Info">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastInfo}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Warning">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastWarning}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Error">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastDanger}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <!-- Title + Message + Time -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                        <TextBlock Text="{Binding FormattedFullTime}" FontSize="10" Foreground="{DynamicResource BrushTextSubtle}" Margin="10,1,0,0"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Message}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" LineHeight="16" Margin="0,3,0,0"/>
+                                                </StackPanel>
+
+                                                <!-- Dismiss button -->
+                                                <Button Grid.Column="2" 
+                                                        Command="{Binding DataContext.Notifications.DismissToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent" BorderThickness="0"
+                                                        Padding="6,2" VerticalAlignment="Top"
+                                                        Cursor="Hand">
+                                                    <TextBlock Text="✕" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </TabItem>
+
+            <!-- Tab 3: Execution Logs (Audit Logs) -->
+            <TabItem Header="{DynamicResource Str_TabAuditLogs}" ToolTip="{DynamicResource Str_Tooltip_TabAuditLogs}">
+                <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,2,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Filter Bar & Search -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="{DynamicResource Str_CardExecutionLogs}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding AuditLogs.LogCountDisplay}" HorizontalAlignment="Right" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Filter Level Buttons -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource FilterButtonAll}" Content="{DynamicResource Str_FilterAll}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterAll}"
+                                            Command="{Binding AuditLogs.FilterLogLevelCommand}" CommandParameter="ALL"/>
+                                    <Button Style="{StaticResource FilterButtonInfo}" Content="{DynamicResource Str_FilterInfo}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterInfo}"
+                                            Command="{Binding AuditLogs.FilterLogLevelCommand}" CommandParameter="INFO"/>
+                                    <Button Style="{StaticResource FilterButtonWarn}" Content="{DynamicResource Str_FilterWarn}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterWarn}"
+                                            Command="{Binding AuditLogs.FilterLogLevelCommand}" CommandParameter="WARN"/>
+                                    <Button Style="{StaticResource FilterButtonError}" Content="{DynamicResource Str_FilterError}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterError}"
+                                            Command="{Binding AuditLogs.FilterLogLevelCommand}" CommandParameter="ERROR"/>
+                                    <Button Style="{StaticResource FilterButtonIpc}" Content="{DynamicResource Str_FilterIpc}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_FilterIpc}"
+                                            Command="{Binding AuditLogs.FilterLogLevelCommand}" CommandParameter="IPC"/>
+                                </StackPanel>
+
+                                <!-- Search Box -->
+                                <Grid Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBox Width="240" Padding="8,4" Text="{Binding AuditLogs.SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock IsHitTestVisible="False" Text="{DynamicResource Str_SearchPlaceholder}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11"
+                                               Visibility="{Binding AuditLogs.SearchText, Converter={StaticResource InvertedNullToVisibilityConverter}}"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+
+                        <!-- ListView displaying Timestamp, Category, Action, Details -->
+                        <ListView Grid.Row="1" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" Foreground="{DynamicResource BrushTextPrimary}"
+                                  ItemsSource="{Binding AuditLogs.LogsView}">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="{DynamicResource Str_ColTimestamp}" Width="95" DisplayMemberBinding="{Binding Timestamp}"/>
+                                    <GridViewColumn Header="{DynamicResource Str_ColCategory}" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="4" Padding="6,2" Background="{Binding Category, Converter={StaticResource StatusToBrushConverter}}" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="{DynamicResource Str_ColAction}" Width="200" DisplayMemberBinding="{Binding Action}"/>
+                                    <GridViewColumn Header="{DynamicResource Str_ColDetails}" Width="550" DisplayMemberBinding="{Binding Details}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </Grid>
+                </Border>
+            </TabItem>
+
+            <!-- Tab: Scenario Runner -->
+            <TabItem Header="{DynamicResource Str_TabScenarioRunner}" ToolTip="{DynamicResource Str_Tooltip_TabScenarioRunner}">
+                <views:ScenarioRunnerView DataContext="{Binding ScenarioRunner}"/>
+            </TabItem>
+
+            <!-- Tab 4: Run History -->
+            <TabItem Header="{DynamicResource Str_TabRunHistory}" ToolTip="{DynamicResource Str_Tooltip_TabRunHistory}">
+                <views:RunHistoryView DataContext="{Binding RunHistory}"/>
+            </TabItem>
+
+            <!-- Tab 5: Settings -->
+            <TabItem Header="{DynamicResource Str_TabSettings}" ToolTip="{DynamicResource Str_Tooltip_TabSettings}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,2,0,0">
+                    <StackPanel Orientation="Vertical">
+                        <!-- Top Security Banner -->
+                        <Border Background="{DynamicResource BrushSuccessBg}" BorderBrush="{DynamicResource BrushSuccessBorder}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="🔒" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Str_BannerSecurityTitle}" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}" FontSize="12"/>
+                                    <TextBlock Text="{DynamicResource Str_BannerSecuritySubtitle}" Foreground="{DynamicResource BrushSuccessText}" FontSize="11" Margin="0,2,0,0" Opacity="0.9"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card: Settings Form -->
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel Orientation="Vertical">
+                                <!-- Section 0A: Theme & Appearance -->
+                                <TextBlock Text="{DynamicResource Str_SecTheme}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblTheme}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Left" Width="260" FontSize="11"
+                                              Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                              SelectedValuePath="Tag"
+                                              SelectedValue="{Binding Settings.SelectedThemeMode, Mode=TwoWay}">
+                                        <ComboBoxItem Tag="System" Content="{DynamicResource Str_ThemeSystem}"/>
+                                        <ComboBoxItem Tag="Dark" Content="{DynamicResource Str_ThemeDark}"/>
+                                        <ComboBoxItem Tag="Light" Content="{DynamicResource Str_ThemeLight}"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 0B: Language & Localization -->
+                                <TextBlock Text="{DynamicResource Str_SecLanguage}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblLanguage}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Left" Width="260" FontSize="11"
+                                              Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                              SelectedValuePath="Tag"
+                                              SelectedValue="{Binding Settings.SelectedLanguage, Mode=TwoWay}">
+                                        <ComboBoxItem Tag="vi-VN" Content="{DynamicResource Str_LangVietnamese}"/>
+                                        <ComboBoxItem Tag="en-US" Content="{DynamicResource Str_LangEnglish}"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 0C: Notification Duration Settings -->
+                                <TextBlock Text="{DynamicResource Str_SecNotificationSettings}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblNotificationDuration}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox Width="80" Text="{Binding Settings.NotificationDurationSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <Button Content="{DynamicResource Str_BtnTestToast}" 
+                                                ToolTip="{DynamicResource Str_Tooltip_BtnTestToast}"
+                                                Command="{Binding Settings.TestToastCommand}" 
+                                                CommandParameter="SUCCESS"
+                                                Padding="10,4"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 1: Gateway endpoint -->
+                                <TextBlock Text="{DynamicResource Str_SecIpc}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <TextBlock Text="{DynamicResource Str_LblIpcPipeName}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox Margin="0,0,0,16" Text="{Binding Settings.IpcPipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 2: Gateway policy (applies to every MCP client) -->
+                                <TextBlock Text="{DynamicResource Str_SecGatewayPolicy}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblMaxPermission}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Left" Width="260" FontSize="11"
+                                              Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                              ToolTip="{DynamicResource Str_Tooltip_MaxPermission}"
+                                              ItemsSource="{Binding Settings.PermissionOptions}"
+                                              SelectedItem="{Binding Settings.SelectedMaxPermission, Mode=TwoWay}"/>
+                                </Grid>
+                                <TextBlock Text="{DynamicResource Str_NoteMaxPermission}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11" Margin="0,0,0,12"/>
+                                <CheckBox Content="{DynamicResource Str_ChkEnforceSandbox}" Margin="0,0,0,4"
+                                          ToolTip="{DynamicResource Str_Tooltip_EnforceSandbox}"
+                                          IsChecked="{Binding Settings.EnforceSandbox, Mode=TwoWay}"/>
+                                <TextBlock Text="{DynamicResource Str_NoteEnforceSandbox}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11" Margin="22,0,0,12"/>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 3: Telegram channel (notifications & escalation) -->
+                                <TextBlock Text="{DynamicResource Str_SecTg}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <CheckBox Content="{DynamicResource Str_ChkTgEnabled}" Margin="0,0,0,12"
+                                          ToolTip="{DynamicResource Str_Tooltip_TgEnabled}"
+                                          IsChecked="{Binding Settings.TelegramEnabled, Mode=TwoWay}"/>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblTgToken}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <PasswordBox Grid.Column="1" HorizontalAlignment="Left" Width="360" FontSize="11"
+                                                 Background="{DynamicResource BrushButtonBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushCardBorder}"
+                                                 ToolTip="{DynamicResource Str_Tooltip_TgToken}"
+                                                 controls:PasswordBoxHelper.BindPassword="True"
+                                                 controls:PasswordBoxHelper.BoundPassword="{Binding Settings.TelegramBotToken, Mode=TwoWay}"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblTgChatId}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Width="260" FontSize="11"
+                                             ToolTip="{DynamicResource Str_Tooltip_TgChatId}"
+                                             Text="{Binding Settings.TelegramChatId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblTgTimeout}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox Width="80" Text="{Binding Settings.TelegramTimeoutMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="{DynamicResource Str_Tooltip_TgTimeout}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <Button Content="{DynamicResource Str_BtnTgTest}" 
+                                                ToolTip="{DynamicResource Str_Tooltip_TgTest}"
+                                                Command="{Binding Settings.TestTelegramCommand}" 
+                                                Padding="12,4" Margin="0,0,12,0"/>
+                                        <TextBlock Text="{Binding Settings.TelegramTestStatus}" 
+                                                   Foreground="{Binding Settings.IsTelegramTestSuccess, Converter={StaticResource StatusSuccessBrushConverter}}" 
+                                                   FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Section: Scenario Library -->
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+                                <TextBlock Text="{DynamicResource Str_SecScenarioLibrary}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblScenarioLibraryDir}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Settings.ScenarioLibraryDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Str_BtnBrowse}" Command="{Binding Settings.BrowseScenarioLibraryDirCommand}" Padding="10,4"/>
+                                </Grid>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Section 3: Run Data Store Root -->
+                                <TextBlock Text="{DynamicResource Str_SecRunStore}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{DynamicResource Str_LblRunStoreRoot}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Settings.RunStoreRoot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="2" Content="{DynamicResource Str_BtnBrowse}" Command="{Binding Settings.BrowseRunStoreRootCommand}" Padding="10,4"/>
+                                </Grid>
+
+                                <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
+
+                                <!-- Action Buttons -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource PrimaryButton}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_BtnSaveConfig}"
+                                            Command="{Binding Settings.SaveConfigCommand}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{DynamicResource Str_BtnSaveConfig}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            <Border Background="{DynamicResource BrushSuccessBg}" BorderBrush="{DynamicResource BrushSuccessBorder}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{DynamicResource Str_BadgeDpapiSecured}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSuccessText}"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Content="{DynamicResource Str_BtnReloadConfig}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_BtnReloadConfig}"
+                                            Command="{Binding Settings.ReloadConfigCommand}"/>
+                                    <Button Content="{DynamicResource Str_BtnOpenConfigFolder}" 
+                                            ToolTip="{DynamicResource Str_Tooltip_BtnOpenConfigFolder}"
+                                            Command="{Binding Settings.OpenConfigFolderCommand}"/>
+                                </StackPanel>
+
+                                <!-- Status Text Indicator -->
+                                <TextBlock Text="{Binding Settings.ConfigStatusText}" 
+                                           Foreground="{Binding Settings.IsConfigStatusSuccess, Converter={StaticResource StatusSuccessBrushConverter}}" 
+                                           FontSize="11" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Tab 5: Allowed (unsigned) add-ins -->
+            <TabItem Header="{DynamicResource Str_TabAddins}" ToolTip="{DynamicResource Str_Tooltip_TabAddins}">
+                <views:AddinAllowlistView/>
+            </TabItem>
+        </TabControl>
+
+        <!-- Floating In-App Toast Notification Stack (Bottom-Right) -->
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding ActiveNotifications}"
+                      VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                      Margin="0,0,24,20" Panel.ZIndex="999"
+                      IsHitTestVisible="True">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource BrushCardBg}"
+                            BorderBrush="{DynamicResource BrushCardBorder}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Width="350"
+                            Margin="0,0,0,8"
+                            Padding="0"
+                            SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270"
+                                              Opacity="0.3" Color="#000000"/>
+                        </Border.Effect>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Accent Stripe on the left edge based on Level -->
+                            <Border Grid.Column="0" CornerRadius="8,0,0,8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource BrushAccentPrimary}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Type}" Value="Success">
+                                                <Setter Property="Background" Value="{DynamicResource BrushToastSuccess}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="Info">
+                                                <Setter Property="Background" Value="{DynamicResource BrushToastInfo}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="Warning">
+                                                <Setter Property="Background" Value="{DynamicResource BrushToastWarning}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Type}" Value="Error">
+                                                <Setter Property="Background" Value="{DynamicResource BrushToastDanger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+
+                            <!-- Toast Content -->
+                            <Grid Grid.Column="1" Margin="12,10,10,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Level Icon Glyph -->
+                                <TextBlock Grid.Column="0" Text="{Binding IconGlyph}" FontSize="15" FontWeight="Bold" Margin="0,0,10,0" VerticalAlignment="Top">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushAccentPrimary}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Type}" Value="Success">
+                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastSuccess}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Type}" Value="Info">
+                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastInfo}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Type}" Value="Warning">
+                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastWarning}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Type}" Value="Error">
+                                                    <Setter Property="Foreground" Value="{DynamicResource BrushToastDanger}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Title, Message, Timestamp -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Text="{Binding Message}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" LineHeight="16" Margin="0,3,0,0"/>
+                                    <TextBlock Text="{Binding FormattedTime}" FontSize="9" Foreground="{DynamicResource BrushTextSubtle}" Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <!-- Quick Close [✕] -->
+                                <Button Grid.Column="2" 
+                                        Command="{Binding DataContext.DismissNotificationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="4" VerticalAlignment="Top" Margin="4,-4,-2,0"
+                                        Cursor="Hand">
+                                    <TextBlock Text="✕" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Row 3: Status Bar Footer -->
+        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,12,0,0">
+            <Grid>
+                <TextBlock Text="{Binding FooterStatus}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BrushSuccessBg}" BorderBrush="{DynamicResource BrushSuccessBorder}" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                        <TextBlock Text="{DynamicResource Str_FooterDpapiActive}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSuccessText}"/>
+                    </Border>
+                    <TextBlock Text=" | " Foreground="{DynamicResource BrushCardBorder}" Margin="6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Clock}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

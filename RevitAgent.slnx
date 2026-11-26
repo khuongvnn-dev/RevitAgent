@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RevitAgent.Bridge/RevitAgent.Bridge.csproj" />
+    <Project Path="src/RevitAgent.Contracts/RevitAgent.Contracts.csproj" />
+    <Project Path="src/RevitAgent.Core/RevitAgent.Core.csproj" />
+    <Project Path="src/RevitAgent.Host/RevitAgent.Host.csproj" />
+    <Project Path="src/RevitAgent.Shim/RevitAgent.Shim.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RevitAgent.Tests/RevitAgent.Tests.csproj" />
+    <Project Path="tests/RevitAgent.UiTestApp/RevitAgent.UiTestApp.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/RevitAgent.E2E/RevitAgent.E2E.csproj" />
+  </Folder>
+</Solution>

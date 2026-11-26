@@ -1,0 +1,44 @@
+# EXAMPLE - confirm on a real Revit (the UI selectors and result field names are best guesses).
+# Creates a Room schedule through the UI (View > Schedules > Schedule/Quantities), then verifies it in the model.
+name: room-schedule-ui
+description: 'Create a Room schedule (Name, Number, Area) through the UI and verify it with schedule_read / model_list_views'
+revit_version: 2024
+# input\model.rvt is NOT shipped with the repo: copy a small .rvt into input\ or change the path below.
+model: 'input\model.rvt'
+keep_model_copy: false
+timeouts: { startup_min: 5, open_model_min: 10, step_min: 30 }
+
+steps:
+  - name: create-room-schedule
+    ui: 'ui\01-create-room-schedule.json'
+    on_error: stop
+    timeout_sec: 300
+  - name: room-schedule
+    tool: schedule_read
+    args: { name: 'Room Schedule' }
+    on_error: continue
+  - name: views
+    tool: model_list_views
+    args: { limit: 500 }
+    on_error: continue
+
+checks:
+  - id: ui-create-ok
+    title: The UI step that creates the schedule completed
+    expect: step_ok(create-room-schedule)
+    severity: fail
+    note: The UI script ran to the end, every expect held and no window was left open.
+  - id: schedule-readable
+    title: The new schedule can be read
+    expect: step_ok(room-schedule)
+    severity: fail
+  - id: schedule-columns
+    title: The schedule has exactly 3 columns (Name, Number, Area)
+    expect: count(room-schedule.json -> fields) == 3
+    severity: fail
+    note: schedule_read lists one entry per schedule field in "fields", hidden fields included (seen on Revit 2024, 2026-11-25).
+  - id: schedule-view-exists
+    title: A view named "Room Schedule" exists in the model
+    expect: count(views.json -> views[name="Room Schedule"]) == 1
+    severity: warn
+    note: The field names of model_list_views (views, name) are a guess; read data\views.json after a real run and adjust.

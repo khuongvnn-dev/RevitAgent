@@ -1,0 +1,107 @@
+<Window x:Class="RevitAgent.UiTestApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RevitAgent UI Test App"
+        Width="1000" Height="720"
+        WindowStartupLocation="Manual" Left="40" Top="40">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+            <TextBlock x:Name="lblStatus" Text="Ready" FontWeight="Bold" Margin="0,0,0,6" />
+
+            <TextBlock Text="Name" />
+            <TextBox x:Name="txtName" Margin="0,0,0,4" />
+
+            <TextBlock Text="Password" />
+            <PasswordBox x:Name="txtPassword" Margin="0,0,0,4" />
+
+            <TextBlock Text="City" />
+            <ComboBox x:Name="cmbCity" Margin="0,0,0,4">
+                <ComboBoxItem Content="Hà Nội" />
+                <ComboBoxItem Content="Đà Nẵng" />
+                <ComboBoxItem Content="Phú Quốc" />
+                <ComboBoxItem Content="Huế" />
+            </ComboBox>
+
+            <CheckBox x:Name="chkAgree" Content="I agree" Margin="0,4,0,4" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="btnSubmit" Content="Submit" Width="90" Margin="0,0,6,0"
+                        IsEnabled="{Binding IsChecked, ElementName=chkAgree}" Click="OnSubmit" />
+                <Button x:Name="btnDisabled" Content="Never enabled" Width="110" IsEnabled="False" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="btnCount" Content="Count" Width="90" Margin="0,0,6,0" Click="OnCount" />
+                <TextBlock x:Name="lblCount" Text="Clicks: 0" VerticalAlignment="Center" />
+                <!-- Like a Revit ribbon button: object content, so its UIA Name is a type name and the text is a raw-view TextBlock. -->
+                <Button x:Name="btnRibbonLike" Width="120" Margin="10,0,0,0">
+                    <Button.ContentTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Text}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </Button.ContentTemplate>
+                </Button>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="btnOpenChild" Content="Open child..." Width="110" Margin="0,0,6,0" Click="OnOpenChild" />
+                <Button x:Name="btnMessage" Content="Show message" Width="110" Click="OnMessage" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="btnDelayed" Content="Show late button" Width="130" Margin="0,0,6,0" Click="OnDelayed" />
+                <Button x:Name="btnLate" Content="Late button" Width="100" Visibility="Collapsed" Click="OnLate" />
+            </StackPanel>
+
+            <TextBlock Text="Keys" />
+            <TextBox x:Name="txtKeys" Margin="0,0,0,4" />
+
+            <TreeView x:Name="treeNodes" Height="80" Margin="0,4,0,4">
+                <TreeViewItem Header="Root">
+                    <TreeViewItem Header="Child A" />
+                    <TreeViewItem Header="Child B" />
+                </TreeViewItem>
+            </TreeView>
+
+            <Border x:Name="canvasArea" Width="340" Height="120" Background="LightGray" BorderBrush="Gray" BorderThickness="1"
+                    MouseLeftButtonDown="OnCanvasDown" HorizontalAlignment="Left">
+                <TextBlock x:Name="lblCanvas" Text="Canvas (no UIA tree)" Margin="4" HorizontalAlignment="Left" VerticalAlignment="Top" />
+            </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1">
+            <TabControl x:Name="tabMain" Height="150">
+                <TabItem x:Name="tabGeneral" Header="General">
+                    <ListBox x:Name="lstItems">
+                        <ListBoxItem Content="Alpha" />
+                        <ListBoxItem Content="Beta" />
+                        <ListBoxItem Content="Gamma" />
+                        <ListBoxItem Content="Delta" />
+                    </ListBox>
+                </TabItem>
+                <TabItem x:Name="tabAdvanced" Header="Advanced">
+                    <TextBox x:Name="txtAdvanced" Text="advanced value" />
+                </TabItem>
+            </TabControl>
+
+            <TextBlock Text="Orders" Margin="0,6,0,0" />
+            <DataGrid x:Name="gridOrders" Height="170" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding Id}" />
+                    <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" />
+                    <DataGridTextColumn Header="City" Binding="{Binding City}" />
+                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount}" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Text="Long list" Margin="0,6,0,0" />
+            <ListBox x:Name="lstLong" Height="140" />
+        </StackPanel>
+    </Grid>
+</Window>

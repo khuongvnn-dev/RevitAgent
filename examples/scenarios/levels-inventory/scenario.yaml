@@ -1,0 +1,47 @@
+# EXAMPLE - confirm on a real Revit. The result field names (elements, categories, name) are best guesses;
+# check them against data\levels.json and data\schedulable-categories.json after the first real run.
+# Lists every Level straight from the model (fast, read-only) and confirms Levels can be scheduled
+# (seen on Revit 2024.3: schedule_list_schedulable_categories reports Levels as schedulable).
+name: levels-inventory
+description: 'List every Level (Name, Elevation) and confirm that Levels is a schedulable category'
+revit_version: 2024
+# input\model.rvt is NOT shipped with the repo: copy a small .rvt into input\ or change the path below.
+model: 'input\model.rvt'
+keep_model_copy: false
+timeouts: { startup_min: 5, open_model_min: 10, step_min: 30 }
+
+steps:
+  - name: schedulable-categories
+    tool: schedule_list_schedulable_categories
+    on_error: continue
+  - name: levels
+    tool: model_query_elements
+    args: { category: 'Levels', fields: ['Name', 'Elevation'], limit: 500 }
+    on_error: stop
+  - name: doc
+    tool: doc_info
+    on_error: stop
+
+checks:
+  - id: levels-read
+    title: The Levels read step succeeded
+    expect: step_ok(levels)
+    severity: fail
+    note: Reads data\step_status.json.
+  - id: levels-exist
+    title: The model has at least one Level
+    expect: count(levels.json -> elements) >= 1
+    severity: fail
+    note: Counts the elements returned by model_query_elements (data\levels.json, field "elements").
+  - id: levels-schedulable
+    title: Levels is in the schedulable categories
+    expect: step_ok(schedulable-categories) and count(schedulable-categories.json -> categories[name="Levels"]) == 1
+    severity: fail
+    note: >-
+      Revit 2024.3 lets you schedule Levels (Name + Elevation). A wrong field name inside the filter
+      gives a count of 0 and FAILs this check; a wrong top-level field name (categories) is NOT_MEASURABLE.
+  - id: doc-info-ok
+    title: doc_info runs on the sandbox copy
+    expect: step_ok(doc)
+    severity: fail
+    note: The runner already verified that the open document is inside the run folder before the first step.

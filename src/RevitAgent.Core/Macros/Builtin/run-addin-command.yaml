@@ -1,0 +1,67 @@
+# Built-in macro (embedded in RevitAgent.Core). Format: docs/agent-guide/macros.md
+name: run-addin-command
+summary: Run a ribbon button (e.g. an add-in's) by its text and report the window/dialogs it opened.
+description: >-
+  Finds exactly one postable ribbon item whose text, id or tooltip contains 'text' (ribbon_list_items, add-in tabs
+  included), posts its command (command_post: Interact, needs the dashboard grant for a Revit the user started),
+  optionally waits for a window whose title contains 'wait_window' (ui_wait), then lists the dialogs blocking Revit
+  (revit_list_dialogs). The command runs after it is posted: without wait_window the dialogs are listed right away and
+  may not show it yet. Dialogs are only listed, never answered. Several matches stop the macro (EXPECTATION_FAILED with a
+  sample): refine 'text' or pass 'tab'.
+requires: [bridge, ui]
+params:
+  pid:
+    type: integer
+    required: true
+    description: Revit process id (revit_list_instances).
+  text:
+    type: string
+    required: true
+    description: Substring of the button text, id or tooltip (case-insensitive).
+  tab:
+    type: string
+    description: Ribbon tab title or id (substring) to narrow the search.
+  wait_window:
+    type: string
+    description: Title substring of the window the command should open; empty = do not wait.
+  timeout_s:
+    type: integer
+    default: 20
+    description: Seconds to wait for wait_window (max 300).
+steps:
+  - id: find
+    tool: ribbon_list_items
+    args:
+      pid: ${pid}
+      tab: ${tab}
+      text_contains: ${text}
+      postable_only: true
+    expect:
+      path: items
+      count: 1
+      message: Refine 'text' or pass 'tab' (ribbon_list_items with the same filters lists the matches).
+  - id: post
+    tool: command_post
+    args:
+      pid: ${pid}
+      command: ${find.items[0].command_id}
+  - id: wait
+    tool: ui_wait
+    when: ${wait_window}
+    args:
+      pid: ${pid}
+      window: ${wait_window}
+      timeout_s: ${timeout_s}
+  - id: dialogs
+    tool: revit_list_dialogs
+    args:
+      pid: ${pid}
+returns:
+  item: ${find.items[0]}
+  command_id: ${post.command_id}
+  revit_activated: ${post.revit_activated}
+  activation_note: ${post.activation_note}
+  window: ${wait.window}
+  waited_ms: ${wait.waited_ms}
+  dialog_count: ${dialogs.count}
+  dialogs: ${dialogs.dialogs}

@@ -1,0 +1,33 @@
+{
+  "schema": "revitagent.dialog-rules/1",
+  "rules": [
+    {
+      "id": "central-model-copied",
+      "description": "Revit notes that a central model was copied during open; acknowledge it with Close.",
+      "process": "Revit",
+      "titleContains": "Copied Central Model",
+      "press": "id=CommandButton_8"
+    },
+    {
+      "id": "central-model-missing",
+      "description": "The central model of a workshared file cannot be found; dismiss the notice with Close.",
+      "process": "Revit",
+      "titleContains": "Cannot Find Central Model",
+      "press": "id=CommandButton_8"
+    },
+    {
+      "id": "desktop-connector-missing",
+      "description": "Desktop Connector is not installed; acknowledge with OK and continue.",
+      "process": "Revit",
+      "titleContains": "Desktop Connector isn't installed",
+      "press": "id=CommandButton_1"
+    },
+    {
+      "id": "unresolved-references",
+      "description": "Linked files could not be resolved; choose the command link that ignores them and continues the open.",
+      "process": "Revit",
+      "titleContains": "Unresolved References",
+      "press": "id=CommandLink_1002"
+    }
+  ]
+}

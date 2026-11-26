@@ -1,0 +1,312 @@
+<UserControl x:Class="RevitAgent.Host.Views.ScenarioRunnerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:viewmodels="clr-namespace:RevitAgent.Host.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=viewmodels:ScenarioRunnerViewModel}"
+             d:DesignHeight="700" d:DesignWidth="1100">
+
+    <Grid Margin="16,12,16,16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="1.2*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Column: Scenario Library & Live Progress -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Library Toolbar & Header -->
+            <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="📁" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource Str_ScenarioLibraryTitle}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Str_ScenarioLibraryFolder}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding LibraryDirDisplay}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Medium" TextTrimming="CharacterEllipsis" MaxWidth="350" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="{DynamicResource Str_BtnSelectAll}" Command="{Binding SelectAllCommand}"
+                                    Background="Transparent" BorderBrush="{DynamicResource BrushBorderNormal}" BorderThickness="1"
+                                    Foreground="{DynamicResource BrushTextPrimary}" Padding="8,4" FontSize="11" Margin="0,0,6,0" Cursor="Hand"/>
+                            <Button Content="{DynamicResource Str_BtnSelectNone}" Command="{Binding SelectNoneCommand}"
+                                    Background="Transparent" BorderBrush="{DynamicResource BrushBorderNormal}" BorderThickness="1"
+                                    Foreground="{DynamicResource BrushTextPrimary}" Padding="8,4" FontSize="11" Margin="0,0,6,0" Cursor="Hand"/>
+                            <Button Content="{DynamicResource Str_BtnRefresh}" Command="{Binding RefreshLibraryCommand}"
+                                    Background="Transparent" BorderBrush="{DynamicResource BrushBorderNormal}" BorderThickness="1"
+                                    Foreground="{DynamicResource BrushTextPrimary}" Padding="8,4" FontSize="11" Cursor="Hand"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Scenario List -->
+            <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="0" ClipToBounds="True">
+                <ListView ItemsSource="{Binding Scenarios}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="4,6"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListViewItem">
+                                        <Border x:Name="ItemBorder" Background="Transparent" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="0,0,0,1" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrushInputHoverBg}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrushInputHoverBg}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.View>
+                        <GridView>
+                            <!-- Selection Checkbox -->
+                            <GridViewColumn Width="45">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Scenario Name & Suite -->
+                            <GridViewColumn Header="{DynamicResource Str_ColScenarioName}" Width="200">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Suite}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Revit Version -->
+                            <GridViewColumn Header="{DynamicResource Str_ColRevitVer}" Width="85">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BrushBadgeBg}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding RevitVersion, TargetNullValue='--'}" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Last Verdict -->
+                            <GridViewColumn Header="{DynamicResource Str_ColLastVerdict}" Width="110">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding VerdictBrush}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding LastVerdict}" FontWeight="Bold" FontSize="11" Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Last Run Time -->
+                            <GridViewColumn Header="{DynamicResource Str_ColLastRunTime}" Width="150" DisplayMemberBinding="{Binding FormattedLastRun}"/>
+
+                            <!-- Description -->
+                            <GridViewColumn Header="{DynamicResource Str_ColDescription}" Width="260">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Description, TargetNullValue='--'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
+
+            <!-- Execution Action Bar & Live Progress Card -->
+            <Border Grid.Row="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,12,0,0">
+                <StackPanel Orientation="Vertical">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Run Button -->
+                        <!-- No IsEnabled binding: the async RunBatchCommand already disables the button while a batch runs. -->
+                        <Button Grid.Column="0" Content="{DynamicResource Str_BtnRunBatch}" Command="{Binding RunBatchCommand}"
+                                Background="{DynamicResource BrushAccentPrimary}" Foreground="White" FontWeight="Bold"
+                                Padding="16,8" FontSize="12" Margin="0,0,10,0" Cursor="Hand" BorderThickness="0">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+
+                        <!-- Stop Button -->
+                        <Button Grid.Column="1" Content="{DynamicResource Str_BtnStopBatch}" Command="{Binding StopBatchCommand}"
+                                IsEnabled="{Binding IsRunning}"
+                                Background="{DynamicResource BrushDangerBg}" BorderBrush="{DynamicResource BrushDangerBorder}" BorderThickness="1"
+                                Foreground="{DynamicResource BrushDangerText}" FontWeight="SemiBold"
+                                Padding="14,8" FontSize="12" Margin="0,0,14,0" Cursor="Hand">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+
+                        <!-- Live Status Message -->
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                <TextBlock Text="{DynamicResource Str_LabelElapsed}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,4,0"/>
+                                <TextBlock Text="{Binding ElapsedText}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,14,0"/>
+                                <TextBlock Text="{DynamicResource Str_LabelProgress}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,4,0"/>
+                                <TextBlock Text="{Binding ProgressText}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Progress Bar -->
+                    <ProgressBar Height="4" Value="{Binding ProgressPercent}" Maximum="100" Margin="0,10,0,8"
+                                 Background="{DynamicResource BrushInputBg}" Foreground="{DynamicResource BrushAccentPrimary}" BorderThickness="0"/>
+
+                    <!-- Current Step & Link to Run History -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Str_LabelCurrentStep}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding CurrentStep, TargetNullValue='--'}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushAccentPrimary}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="{DynamicResource Str_BtnViewHistory}" Command="{Binding ViewRunHistoryCommand}"
+                                    Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushAccentPrimary}"
+                                    Cursor="Hand" FontSize="11" Margin="0,0,12,0"/>
+                            <Button Content="{DynamicResource Str_BtnOpenLastRun}" Command="{Binding OpenLastRunFolderCommand}"
+                                    IsEnabled="{Binding HasLastRun}"
+                                    Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushAccentPrimary}"
+                                    Cursor="Hand" FontSize="11"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Right Column: Nightly Schedule Card -->
+        <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16,14">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Orientation="Vertical">
+                    <!-- Schedule Header -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <TextBlock Text="🌙" FontSize="18" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Str_ScheduleTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <TextBlock Text="{DynamicResource Str_ScheduleSubtitle}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Enable Schedule Checkbox -->
+                    <CheckBox IsChecked="{Binding ScheduleEnabled}" Content="{DynamicResource Str_ScheduleEnableToggle}"
+                              FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14"/>
+
+                    <!-- Scheduled Time -->
+                    <TextBlock Text="{DynamicResource Str_ScheduleTimeLabel}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="12"
+                             Background="{DynamicResource BrushInputBg}" Foreground="{DynamicResource BrushTextPrimary}"
+                             BorderBrush="{DynamicResource BrushBorderNormal}" BorderThickness="1" Margin="0,0,0,14">
+                        <TextBox.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <!-- Revit Year -->
+                    <TextBlock Text="{DynamicResource Str_ScheduleRevitYearLabel}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding ScheduleRevitYear, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="12"
+                             Background="{DynamicResource BrushInputBg}" Foreground="{DynamicResource BrushTextPrimary}"
+                             BorderBrush="{DynamicResource BrushBorderNormal}" BorderThickness="1" Margin="0,0,0,14">
+                        <TextBox.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+
+                    <!-- Days of Week -->
+                    <TextBlock Text="{DynamicResource Str_ScheduleDaysLabel}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                    <WrapPanel Margin="0,0,0,14">
+                        <CheckBox IsChecked="{Binding DayMon}" Content="T2 (Mon)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DayTue}" Content="T3 (Tue)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DayWed}" Content="T4 (Wed)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DayThu}" Content="T5 (Thu)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DayFri}" Content="T6 (Fri)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DaySat}" Content="T7 (Sat)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <CheckBox IsChecked="{Binding DaySun}" Content="CN (Sun)" Margin="0,0,10,6" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    </WrapPanel>
+
+                    <!-- Next Scheduled Run Time Indicator -->
+                    <Border Background="{DynamicResource BrushSuccessBg}" BorderBrush="{DynamicResource BrushSuccessBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Str_ScheduleNextRunLabel}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSuccessText}"/>
+                            <TextBlock Text="{Binding NextRunTimeText}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Save Schedule Button -->
+                    <Button Content="{DynamicResource Str_BtnSaveSchedule}" Command="{Binding SaveScheduleCommand}"
+                            Background="{DynamicResource BrushAccentPrimary}" Foreground="White" FontWeight="Bold"
+                            Padding="12,8" FontSize="12" Margin="0,0,0,16" Cursor="Hand" BorderThickness="0">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+
+                    <!-- Unattended Run Safety Notice -->
+                    <Border Background="{DynamicResource BrushWarningBg}" BorderBrush="{DynamicResource BrushWarningBorder}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Str_ScheduleNoticeTitle}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource BrushWarningText}"/>
+                            <TextBlock Text="{DynamicResource Str_ScheduleNoticeBody}" FontSize="10" Foreground="{DynamicResource BrushWarningText}" TextWrapping="Wrap" Margin="0,4,0,0" LineHeight="14"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

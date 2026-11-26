@@ -1,0 +1,92 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ========================================================================= -->
+    <!-- LIGHT THEME (CLEAN SLATE 50/WHITE, SOFT SHADOW, HIGH CONTRAST WCAG AA/AAA) -->
+    <!-- ========================================================================= -->
+
+    <!-- Surfaces & Canvas -->
+    <SolidColorBrush x:Key="BrushWindowBg" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="BrushCardBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushCardBorder" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BrushInputBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushInputBorder" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="BrushHeaderBarBg" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="BrushHeaderBarBorder" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BrushListItemHover" Color="#F1F5F9"/>
+
+    <!-- Typography -->
+    <SolidColorBrush x:Key="BrushTextPrimary" Color="#0F172A"/>
+    <SolidColorBrush x:Key="BrushTextMuted" Color="#64748B"/>
+    <SolidColorBrush x:Key="BrushTextSubtle" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="BrushTextHeaderAccent" Color="#0284C7"/>
+
+    <!-- Accent / Primary Action (Blue 600 - WCAG AA compliant on White) -->
+    <SolidColorBrush x:Key="BrushAccentPrimary" Color="#2563EB"/>
+    <SolidColorBrush x:Key="BrushAccentHover" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="BrushAccentPressed" Color="#1E40AF"/>
+    <SolidColorBrush x:Key="BrushAccentBorder" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="BrushAccentForeground" Color="#FFFFFF"/>
+
+    <!-- Neutral Button States -->
+    <SolidColorBrush x:Key="BrushButtonBg" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="BrushButtonHover" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BrushButtonPressed" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="BrushButtonBorder" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="BrushButtonForeground" Color="#0F172A"/>
+
+    <!-- Success (Emerald) -->
+    <SolidColorBrush x:Key="BrushSuccess" Color="#059669"/>
+    <SolidColorBrush x:Key="BrushSuccessBg" Color="#ECFDF5"/>
+    <SolidColorBrush x:Key="BrushSuccessBorder" Color="#10B981"/>
+    <SolidColorBrush x:Key="BrushSuccessText" Color="#065F46"/>
+    <SolidColorBrush x:Key="BrushSuccessDot" Color="#10B981"/>
+
+    <!-- Warning (Amber - Dark foreground text #0F172A for 8.3:1 contrast) -->
+    <SolidColorBrush x:Key="BrushWarning" Color="#D97706"/>
+    <SolidColorBrush x:Key="BrushWarningHover" Color="#B45309"/>
+    <SolidColorBrush x:Key="BrushWarningBorder" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="BrushWarningForeground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushWarningBg" Color="#FFFBEB"/>
+    <SolidColorBrush x:Key="BrushWarningText" Color="#92400E"/>
+    <SolidColorBrush x:Key="BrushWarningDot" Color="#D97706"/>
+
+    <!-- Danger (Red 600 - WCAG AA compliant with White text) -->
+    <SolidColorBrush x:Key="BrushDanger" Color="#DC2626"/>
+    <SolidColorBrush x:Key="BrushDangerHover" Color="#B91C1C"/>
+    <SolidColorBrush x:Key="BrushDangerBorder" Color="#EF4444"/>
+    <SolidColorBrush x:Key="BrushDangerForeground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushDangerBg" Color="#FEF2F2"/>
+    <SolidColorBrush x:Key="BrushDangerText" Color="#991B1B"/>
+    <SolidColorBrush x:Key="BrushDangerDot" Color="#DC2626"/>
+
+    <!-- Offline / Standby Status -->
+    <SolidColorBrush x:Key="BrushOfflineBg" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="BrushOfflineBorder" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="BrushOfflineText" Color="#64748B"/>
+    <SolidColorBrush x:Key="BrushOfflineDot" Color="#94A3B8"/>
+
+    <!-- Tooltip -->
+    <SolidColorBrush x:Key="BrushToolTipBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushToolTipBorder" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="BrushToolTipText" Color="#0F172A"/>
+
+    <!-- Toast Notifications -->
+    <SolidColorBrush x:Key="BrushToastBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BrushToastBorder" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BrushToastSuccess" Color="#059669"/>
+    <SolidColorBrush x:Key="BrushToastInfo" Color="#2563EB"/>
+    <SolidColorBrush x:Key="BrushToastWarning" Color="#D97706"/>
+    <SolidColorBrush x:Key="BrushToastDanger" Color="#DC2626"/>
+
+    <!-- Legacy Compatibility Aliases -->
+    <SolidColorBrush x:Key="BgDark" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="CardBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CardBorder" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="InputBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="InputBorder" Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="TextPrimary" Color="#0F172A"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#64748B"/>
+    <SolidColorBrush x:Key="AccentPrimary" Color="#2563EB"/>
+
+</ResourceDictionary>

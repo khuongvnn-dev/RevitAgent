@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RevitAgent.Contracts\RevitAgent.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\RevitAgent.Host\RevitAgent.Host.csproj" />
+    <ProjectReference Include="..\..\src\RevitAgent.Core\RevitAgent.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyLocalizationFilesToTests" AfterTargets="Build">
+    <Copy SourceFiles="..\..\src\RevitAgent.Host\Resources\Localization\Strings.vi-VN.xaml" DestinationFolder="$(TargetDir)Resources\Localization" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\src\RevitAgent.Host\Resources\Localization\Strings.en-US.xaml" DestinationFolder="$(TargetDir)Resources\Localization" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\src\RevitAgent.Host\Resources\Themes\DarkTheme.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\src\RevitAgent.Host\Resources\Themes\LightTheme.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\..\src\RevitAgent.Host\Resources\Themes\IconGeometries.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

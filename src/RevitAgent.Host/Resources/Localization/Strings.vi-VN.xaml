@@ -1,0 +1,387 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Window & Header -->
+    <sys:String x:Key="Str_WindowTitle">RevitAgent Host - Cổng MCP cho Revit</sys:String>
+    <sys:String x:Key="Str_HeaderBadgeHost">MÁY CHỦ</sys:String>
+    <sys:String x:Key="Str_HeaderTitle">Bảng điều khiển RevitAgent</sys:String>
+    <sys:String x:Key="Str_HeaderVersion">v2.0 Gateway MCP</sys:String>
+
+    <!-- Header Status Badges -->
+    <sys:String x:Key="Str_LblSystemHealth">GIÁM SÁT HỆ THỐNG:</sys:String>
+    <sys:String x:Key="Str_BadgeDesktopInteractive">Desktop Interactive</sys:String>
+    <sys:String x:Key="Str_BadgeDesktopLocked">Desktop Bị khóa / Mất kết nối</sys:String>
+    <sys:String x:Key="Str_BadgePipeOffline">Pipe: Ngoại tuyến</sys:String>
+    <sys:String x:Key="Str_BadgeBridgeConnected">Bridge: Đã kết nối</sys:String>
+    <sys:String x:Key="Str_BadgeBridgeDisconnected">Bridge: Ngắt kết nối</sys:String>
+    <sys:String x:Key="Str_BadgeUacStandby">UAC: Chờ</sys:String>
+    <sys:String x:Key="Str_BadgeUacMatched">UAC: Đồng nhất</sys:String>
+    <sys:String x:Key="Str_BadgeUacMismatch">UAC: Lệch đặc quyền</sys:String>
+
+    <!-- Quick Action Toolbar Buttons (Concise Modern Labels) -->
+    <sys:String x:Key="Str_BtnStartServer">Khởi động Server</sys:String>
+    <sys:String x:Key="Str_BtnStopServer">Dừng Server</sys:String>
+    <sys:String x:Key="Str_BtnLaunchRevit">Mở Revit</sys:String>
+    <sys:String x:Key="Str_BtnCaptureScreenshot">Chụp màn hình</sys:String>
+    <sys:String x:Key="Str_BtnSandboxFolder">Thư mục chạy</sys:String>
+    <sys:String x:Key="Str_BtnClearLogs">Xóa log</sys:String>
+
+    <!-- Tooltips (Action - Context - Shortcut) -->
+    <sys:String x:Key="Str_Tooltip_BtnStartServer">Khởi động cổng MCP: mở named pipe cục bộ để các AI client (qua RevitAgent.Shim) gọi công cụ.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnStopServer">Dừng cổng MCP: đóng các phiên AI đang kết nối.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLaunchRevit">Mở Revit mới (revit_launch) theo năm đang chọn trong thẻ "Phiên bản Revit &amp; Bridge". Không bao giờ chạm vào Revit đang chạy của bạn.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnCaptureScreenshot">Chụp cửa sổ chính của Revit đang chọn trong danh sách, hiển thị ở cột phải và lưu vào thư mục captures.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnSandboxFolder">Mở thư mục runs: nơi gateway lưu bản sao mô hình và kết quả mỗi lần chạy kịch bản.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnClearLogs">Xóa nhật ký hiển thị: Xóa sạch danh sách sự kiện trên bảng timeline hiển thị (không ảnh hưởng file log trên đĩa).</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnThemeToggle">Chuyển đổi giao diện: Bấm để chuyển lần lượt giữa Tự động theo Windows OS, Chế độ Tối (Dark), và Chế độ Sáng (Light).</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLangVi">Chuyển sang Tiếng Việt: Chuyển toàn bộ ngôn ngữ giao diện sang Tiếng Việt.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnLangEn">Switch to English: Switch entire user interface to English.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeDesktop">Trạng thái tương tác Desktop: Xác định phiên Windows đang mở hay bị khóa (LockScreen/RDP) để nhận phím/chuột.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeIpc">Trạng thái cổng MCP: named pipe cục bộ đang lắng nghe các AI client.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeBridge">Trạng thái Bridge: có ít nhất một Revit đã kết nối Bridge với gateway.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BadgeUac">Kiểm tra đồng nhất đặc quyền UAC: Host và Revit phải có cùng mức đặc quyền (Medium hoặc Elevated) để tránh bị chặn tin nhắn Win32.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnSaveConfig">Lưu cấu hình: mã hóa các thiết lập bằng Windows DPAPI và áp dụng chính sách gateway ngay.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnReloadConfig">Tải lại cấu hình: Đọc lại thiết lập mã hóa từ đĩa %LOCALAPPDATA%\RevitAgent\appsettings.enc.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnOpenConfigFolder">Mở vị trí cấu hình: Mở thư mục chứa tệp mã hóa DPAPI trong Windows Explorer.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterAll">Xem toàn bộ nhật ký sự kiện.</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterInfo">Chỉ lọc và hiển thị sự kiện cấp Thông tin (INFO).</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterWarn">Chỉ lọc và hiển thị sự kiện cấp Cảnh báo (WARN).</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterError">Chỉ lọc và hiển thị sự kiện cấp Lỗi (ERROR).</sys:String>
+    <sys:String x:Key="Str_Tooltip_FilterIpc">Chỉ lọc và hiển thị các lệnh gọi IPC.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabDashboard">Chuyển sang bảng điều khiển: Revit đang chạy, phiên bản &amp; Bridge, kết nối AI.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabNotifications">Chuyển sang Lịch sử thông báo hệ thống và kết quả tác vụ.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabAuditLogs">Chuyển sang Nhật ký thực thi thời gian thực và kiểm toán IPC.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabSettings">Chuyển sang cài đặt: ngôn ngữ, theme, chính sách gateway và cấu hình mã hóa DPAPI.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnClearNotifications">Xóa sạch toàn bộ lịch sử thông báo.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnMarkAllRead">Đánh dấu tất cả thông báo là đã đọc.</sys:String>
+    <sys:String x:Key="Str_Tooltip_BtnTestToast">Bắn thông báo mẫu để kiểm tra thời lượng và hiệu ứng hiển thị.</sys:String>
+
+    <!-- Tab Headers -->
+    <sys:String x:Key="Str_TabDashboard">📊 Bảng Điều Khiển</sys:String>
+    <sys:String x:Key="Str_TabNotifications">🔔 Thông Báo</sys:String>
+    <sys:String x:Key="Str_TabAuditLogs">📜 Nhật Ký Thực Thi</sys:String>
+    <sys:String x:Key="Str_TabSettings">⚙️ Cài Đặt</sys:String>
+
+    <!-- Notifications Tab & In-App Toast -->
+    <sys:String x:Key="Str_CardNotificationsHistory">LỊCH SỬ THÔNG BÁO HỆ THỐNG</sys:String>
+    <sys:String x:Key="Str_NotificationCountFmt">{0} thông báo</sys:String>
+    <sys:String x:Key="Str_BtnClearAllNotifications">Xóa tất cả</sys:String>
+    <sys:String x:Key="Str_BtnMarkAllRead">Đã đọc tất cả</sys:String>
+    <sys:String x:Key="Str_TxtNoNotifications">Chưa có thông báo nào. Các cảnh báo và kết quả tác vụ sẽ hiển thị tại đây.</sys:String>
+    <sys:String x:Key="Str_ToastConfigSavedTitle">Cấu hình Hệ thống</sys:String>
+    <sys:String x:Key="Str_SecNotificationSettings">THỜI LƯỢNG THÔNG BÁO NỘI BỘ (IN-APP TOAST)</sys:String>
+    <sys:String x:Key="Str_LblNotificationDuration">Thời gian tự đóng Toast (giây):</sys:String>
+    <sys:String x:Key="Str_BtnTestToast">Thử thông báo</sys:String>
+
+    <!-- Dashboard: Revit Process & UAC Guard -->
+
+    <!-- Dashboard: Telegram Gatekeeper -->
+
+    <!-- Dashboard: Recent Screenshot & Logs -->
+    <sys:String x:Key="Str_CardRecentScreenshot">ẢNH CHỤP GẦN NHẤT</sys:String>
+    <sys:String x:Key="Str_TxtNoScreenshot">Chưa có ảnh chụp</sys:String>
+    <sys:String x:Key="Str_CardExecutionLogs">NHẬT KÝ THỰC THI THỜI GIAN THỰC (TIMELINE &amp; IPC AUDIT)</sys:String>
+
+    <!-- Log Filters & Search -->
+    <sys:String x:Key="Str_FilterAll">Tất cả</sys:String>
+    <sys:String x:Key="Str_FilterInfo">Thông tin</sys:String>
+    <sys:String x:Key="Str_FilterSuccess">✓ Thành công</sys:String>
+    <sys:String x:Key="Str_FilterWarn">Cảnh báo</sys:String>
+    <sys:String x:Key="Str_FilterError">Lỗi</sys:String>
+    <sys:String x:Key="Str_FilterIpc">IPC</sys:String>
+    <sys:String x:Key="Str_SearchPlaceholder">Tìm kiếm sự kiện...</sys:String>
+
+    <!-- Log Table Column Headers -->
+    <sys:String x:Key="Str_ColTimestamp">Thời gian</sys:String>
+    <sys:String x:Key="Str_ColCategory">Loại</sys:String>
+    <sys:String x:Key="Str_ColAction">Hành động / Phương thức</sys:String>
+    <sys:String x:Key="Str_ColDetails">Chi tiết</sys:String>
+
+    <!-- Settings: Security Banner -->
+    <sys:String x:Key="Str_BannerSecurityTitle">Bảo mật Cấu hình Hệ thống (Hardware/CurrentUser Bound DPAPI)</sys:String>
+    <sys:String x:Key="Str_BannerSecuritySubtitle">Cấu hình được mã hóa an toàn bằng Windows DPAPI (CurrentUser + EntropySalt) tại %LOCALAPPDATA%\RevitAgent\appsettings.enc</sys:String>
+
+    <!-- Settings: Appearance & Theme -->
+    <sys:String x:Key="Str_SecTheme">CHẾ ĐỘ GIAO DIỆN (THEME)</sys:String>
+    <sys:String x:Key="Str_LblTheme">Chế độ hiển thị:</sys:String>
+    <sys:String x:Key="Str_ThemeSystem">💻 Theo hệ thống Windows (OS)</sys:String>
+    <sys:String x:Key="Str_ThemeDark">🌙 Tối (Dark Slate)</sys:String>
+    <sys:String x:Key="Str_ThemeLight">☀️ Sáng (Light Clean)</sys:String>
+
+    <!-- Settings: Language Selector -->
+    <sys:String x:Key="Str_SecLanguage">NGÔN NGỮ &amp; GIAO DIỆN (LOCALIZATION)</sys:String>
+    <sys:String x:Key="Str_LblLanguage">Ngôn ngữ hiển thị:</sys:String>
+    <sys:String x:Key="Str_LangVietnamese">🇻🇳 Tiếng Việt</sys:String>
+    <sys:String x:Key="Str_LangEnglish">🇬🇧 English</sys:String>
+    <sys:String x:Key="Str_LangSwitchTooltip">Chuyển đổi ngôn ngữ hiển thị (Tiếng Việt / English)</sys:String>
+
+    <!-- Settings: Paths & Environment -->
+
+    <!-- Settings: IPC & Isolation -->
+    <sys:String x:Key="Str_SecIpc">CỔNG MCP (NAMED PIPE)</sys:String>
+    <sys:String x:Key="Str_LblIpcPipeName">IPC Named Pipe:</sys:String>
+
+    <!-- Settings: Telegram Secrets -->
+
+    <!-- Settings: Actions -->
+    <sys:String x:Key="Str_BtnSaveConfig">Lưu cấu hình</sys:String>
+    <sys:String x:Key="Str_BadgeDpapiSecured">DPAPI Secured</sys:String>
+    <sys:String x:Key="Str_BtnReloadConfig">Tải lại cấu hình</sys:String>
+    <sys:String x:Key="Str_BtnOpenConfigFolder">Mở vị trí tệp mã hóa</sys:String>
+
+    <!-- Footer & Status -->
+    <sys:String x:Key="Str_FooterDpapiActive">DPAPI Encrypted Store Active</sys:String>
+    <sys:String x:Key="Str_StatusReady">Sẵn sàng. AI client kết nối qua RevitAgent.Shim.</sys:String>
+
+    <!-- Dialogs & Toast Alerts -->
+    <sys:String x:Key="Str_DlgExportLogsTitle">Xuất nhật ký thực thi (JSON)</sys:String>
+    <sys:String x:Key="Str_StatusConfigSaved">Đã mã hóa và lưu an toàn cấu hình qua DPAPI.</sys:String>
+    <sys:String x:Key="Str_StatusConfigReloaded">Đã nạp lại cấu hình từ đĩa.</sys:String>
+    <sys:String x:Key="Str_StatusConfigLoaded">Đã tải cấu hình bảo mật DPAPI ({0}).</sys:String>
+    <sys:String x:Key="Str_StatusConfigDefault">Chưa phát hiện tệp cấu hình enc; đang sử dụng thiết lập mặc định.</sys:String>
+    <sys:String x:Key="Str_EventsCount">{0} sự kiện</sys:String>
+
+    <sys:String x:Key="Str_BtnDialogs">Hộp thoại</sys:String>
+
+    <sys:String x:Key="Str_BtnInstallBridge">Cài Bridge</sys:String>
+
+    <sys:String x:Key="Str_BtnUninstallBridge">Gỡ Bridge</sys:String>
+
+    <sys:String x:Key="Str_BtnConnectAi">Kết nối AI</sys:String>
+
+    <sys:String x:Key="Str_BtnCloseRevit">Đóng Revit</sys:String>
+
+    <sys:String x:Key="Str_BtnCopyClaudeCommand">Sao chép lệnh Claude Code</sys:String>
+
+    <sys:String x:Key="Str_BtnCopyClaudeJson">Sao chép JSON Claude Desktop / Cursor</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnDialogs">Liệt kê hộp thoại đang chặn Revit đã chọn (revit_list_dialogs). Chỉ đọc: không bấm nút nào.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnInstallBridge">Cài Bridge add-in cho năm Revit đang chọn (bridge_install).</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnUninstallBridge">Gỡ Bridge add-in của năm Revit đang chọn (bridge_uninstall).</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BridgeUnavailable">Bridge installer không có trong bản build này</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnConnectAi">Kết nối AI: sao chép lệnh "claude mcp add revitagent" vào clipboard.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCloseRevit">Đóng Revit đang chọn (revit_close). Chỉ dùng được với Revit do gateway mở.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCloseRevitForeign">Revit này không do gateway mở nên có thể chứa việc chưa lưu của bạn: nút đóng bị khóa.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCopyClaudeCommand">Sao chép: claude mcp add revitagent -- "&lt;đường dẫn RevitAgent.Shim.exe&gt;"</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_BtnCopyClaudeJson">Sao chép đoạn cấu hình mcpServers cho Claude Desktop hoặc Cursor.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_RevitList">Các tiến trình Revit.exe đang chạy (làm mới mỗi 3 giây, chỉ đọc). Chọn một dòng để chụp màn hình, xem hộp thoại hoặc đóng.</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_YearSelector">Năm Revit đã cài: dùng cho Mở Revit, Cài Bridge và Gỡ Bridge.</sys:String>
+
+    <sys:String x:Key="Str_CardRunningRevit">REVIT ĐANG CHẠY</sys:String>
+
+    <sys:String x:Key="Str_CardRevitBridge">PHIÊN BẢN REVIT &amp; BRIDGE</sys:String>
+
+    <sys:String x:Key="Str_CardConnectAi">KẾT NỐI AI CLIENT</sys:String>
+
+    <sys:String x:Key="Str_ColPid">PID</sys:String>
+
+    <sys:String x:Key="Str_ColYear">Năm</sys:String>
+
+    <sys:String x:Key="Str_ColDocument">Tài liệu</sys:String>
+
+    <sys:String x:Key="Str_ColState">Trạng thái</sys:String>
+
+    <sys:String x:Key="Str_ColBridge">Bridge</sys:String>
+
+    <sys:String x:Key="Str_ColLaunchedByGateway">Gateway mở</sys:String>
+
+    <sys:String x:Key="Str_ColBridgeInstalled">Đã cài Bridge</sys:String>
+
+    <sys:String x:Key="Str_LblYear">Năm Revit:</sys:String>
+
+    <sys:String x:Key="Str_LblGatewayPipe">Named pipe của gateway:</sys:String>
+
+    <sys:String x:Key="Str_LblActiveSessions">Phiên MCP đang kết nối:</sys:String>
+
+    <sys:String x:Key="Str_LblShimPath">RevitAgent.Shim.exe (AI client chạy file này):</sys:String>
+
+    <sys:String x:Key="Str_ValShimNotFound">Chưa tìm thấy RevitAgent.Shim.exe - hãy build solution (dotnet build) hoặc đặt cạnh Host.</sys:String>
+
+    <sys:String x:Key="Str_TxtNoRevitRunning">Không có Revit nào đang chạy</sys:String>
+
+    <sys:String x:Key="Str_TxtNoRevitInstalled">Không tìm thấy Revit nào đã cài</sys:String>
+
+    <sys:String x:Key="Str_RevitCountFmt">{0} đang chạy</sys:String>
+
+    <sys:String x:Key="Str_TitleRevit">Revit</sys:String>
+
+    <sys:String x:Key="Str_TitleDialogs">Hộp thoại Revit</sys:String>
+
+    <sys:String x:Key="Str_TitleBridge">Revit Bridge</sys:String>
+
+    <sys:String x:Key="Str_TitleConnectAi">Kết nối AI</sys:String>
+
+    <sys:String x:Key="Str_MsgSelectRevit">Hãy chọn một Revit trong danh sách trước.</sys:String>
+
+    <sys:String x:Key="Str_MsgSelectYear">Hãy chọn một năm Revit đã cài.</sys:String>
+
+    <sys:String x:Key="Str_MsgNoMainWindow">Revit PID {0} chưa có cửa sổ chính để chụp.</sys:String>
+
+    <sys:String x:Key="Str_MsgCaptureSaved">Đã lưu ảnh chụp: {0}</sys:String>
+
+    <sys:String x:Key="Str_MsgCaptureFailed">Không chụp được cửa sổ Revit (cửa sổ đã đóng?).</sys:String>
+
+    <sys:String x:Key="Str_MsgDialogsNone">Revit PID {0} không có hộp thoại nào đang chặn.</sys:String>
+
+    <sys:String x:Key="Str_MsgDialogsCount">{0} hộp thoại đang chặn Revit PID {1}.</sys:String>
+
+    <sys:String x:Key="Str_MsgToolFailed">{0} thất bại: {1}</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunching">Đang mở Revit {0}... (có thể mất vài phút)</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunched">Revit {0} đã sẵn sàng (PID {1}).</sys:String>
+
+    <sys:String x:Key="Str_MsgLaunchNotReady">Revit chưa sẵn sàng: {0}</sys:String>
+
+    <sys:String x:Key="Str_MsgClosed">Đã đóng Revit PID {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgBridgeInstalled">Đã cài Bridge cho Revit {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgBridgeRemoved">Đã gỡ Bridge của Revit {0}.</sys:String>
+
+    <sys:String x:Key="Str_MsgCopied">Đã sao chép vào clipboard.</sys:String>
+
+    <sys:String x:Key="Str_MsgCopiedNoShim">Đã sao chép, nhưng chưa tìm thấy RevitAgent.Shim.exe: hãy build solution và kiểm tra đường dẫn.</sys:String>
+
+    <sys:String x:Key="Str_MsgGatewayStopped">Cổng MCP đã dừng.</sys:String>
+
+    <sys:String x:Key="Str_MsgGatewayListening">Cổng MCP đang lắng nghe tại {0}</sys:String>
+
+    <sys:String x:Key="Str_SecGatewayPolicy">CHÍNH SÁCH GATEWAY</sys:String>
+
+    <sys:String x:Key="Str_LblMaxPermission">Quyền tối đa của công cụ:</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_MaxPermission">Read &lt; Interact &lt; Write &lt; Admin. Công cụ cần quyền cao hơn mức này sẽ bị từ chối với mọi AI client (kể cả nút Mở Revit trên bảng điều khiển, cần Admin).</sys:String>
+
+    <sys:String x:Key="Str_NoteMaxPermission">Read: chỉ quan sát. Interact: thao tác giao diện. Write: sửa mô hình/tệp. Admin: mở/đóng Revit, cài Bridge.</sys:String>
+
+    <sys:String x:Key="Str_ChkEnforceSandbox">Bắt buộc sandbox</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_EnforceSandbox">Công cụ ghi chỉ được mở/sửa tài liệu nằm trong thư mục runs (bản sao). Nên bật.</sys:String>
+
+    <sys:String x:Key="Str_NoteEnforceSandbox">Công cụ ghi chỉ làm việc trên bản sao mô hình trong thư mục runs.</sys:String>
+
+
+
+
+    <!-- Add-in allowlist page (lane S1) -->
+    <sys:String x:Key="Str_TabAddins">🛡 Add-in được phép</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabAddins">Danh sách add-in không có chữ ký mà gateway được phép cho nạp khi tự mở Revit.</sys:String>
+    <sys:String x:Key="Str_AddinTitle">Add-in được phép (Security - Unsigned Add-In)</sys:String>
+    <sys:String x:Key="Str_AddinHelp">Khi Revit do gateway tự mở hiện hộp thoại "Security - Unsigned Add-In": add-in có trong danh sách (đúng tên và đúng đường dẫn) sẽ được bấm "Load Once"; add-in không có trong danh sách bị bấm "Do Not Load". Revit bạn tự mở thì gateway không bao giờ bấm gì. Chỉ bạn sửa được danh sách này ở đây - AI agent chỉ đọc được, không thêm được. Mọi lần gateway bấm đều ghi nhật ký kèm ảnh chụp.</sys:String>
+    <sys:String x:Key="Str_AddinLblName">Tên add-in</sys:String>
+    <sys:String x:Key="Str_AddinLblPath">File DLL / mẫu đường dẫn</sys:String>
+    <sys:String x:Key="Str_AddinLblFolder">Thư mục thay bằng *</sys:String>
+    <sys:String x:Key="Str_AddinLblPreview">Mẫu sẽ lưu</sys:String>
+    <sys:String x:Key="Str_AddinLblNote">Ghi chú</sys:String>
+    <sys:String x:Key="Str_AddinTipName">Đúng như dòng "Name:" trong hộp thoại của Revit, ví dụ MyAddin.App (không phân biệt hoa thường).</sys:String>
+    <sys:String x:Key="Str_AddinTipPath">Đường dẫn đầy đủ của file DLL, hoặc mẫu có * (một cấp thư mục), ** (nhiều cấp), ? (một ký tự).</sys:String>
+    <sys:String x:Key="Str_AddinChkPattern">Biến một thư mục thành mẫu * (ví dụ thư mục worktree thay đổi theo từng ticket)</sys:String>
+    <sys:String x:Key="Str_AddinBtnBrowse">Chọn DLL...</sys:String>
+    <sys:String x:Key="Str_AddinBtnSave">Lưu</sys:String>
+    <sys:String x:Key="Str_AddinBtnClear">Làm mới form</sys:String>
+    <sys:String x:Key="Str_AddinBtnReload">Tải lại</sys:String>
+    <sys:String x:Key="Str_AddinBtnEdit">Sửa</sys:String>
+    <sys:String x:Key="Str_AddinBtnRemove">Xóa</sys:String>
+    <sys:String x:Key="Str_AddinListTitle">Danh sách đang áp dụng</sys:String>
+    <sys:String x:Key="Str_AddinColEnabled">Bật</sys:String>
+    <sys:String x:Key="Str_AddinColName">Tên</sys:String>
+    <sys:String x:Key="Str_AddinColPattern">Đường dẫn / mẫu</sys:String>
+    <sys:String x:Key="Str_AddinColNote">Ghi chú</sys:String>
+    <sys:String x:Key="Str_AddinColAdded">Thêm lúc</sys:String>
+    <sys:String x:Key="Str_AddinErrName">Cần nhập tên add-in.</sys:String>
+    <sys:String x:Key="Str_AddinErrPattern">Đường dẫn / mẫu không hợp lệ:</sys:String>
+    <sys:String x:Key="Str_AddinErrGone">Mục này không còn trong file (đã bị sửa nơi khác). Đã tải lại danh sách.</sys:String>
+    <sys:String x:Key="Str_AddinSaved">Đã lưu danh sách add-in.</sys:String>
+    <sys:String x:Key="Str_AddinRemoved">Đã xóa khỏi danh sách.</sys:String>
+    <sys:String x:Key="Str_AddinConfirmRemove">Xóa add-in '{0}' khỏi danh sách được phép?</sys:String>
+
+    <sys:String x:Key="Str_CardActionGrant">Cho AI thao tác Revit của tôi</sys:String>
+    <sys:String x:Key="Str_NoteActionGrant">Mặc định AI chỉ được ĐỌC Revit bạn tự mở. Bật để AI được bấm/gõ/chạy lệnh trong thời gian giới hạn (chỉ lưu trong bộ nhớ Host, tắt Host là mất).</sys:String>
+    <sys:String x:Key="Str_GrantAllRevit">Tất cả Revit của tôi</sys:String>
+    <sys:String x:Key="Str_Grant15m">15 phút</sys:String>
+    <sys:String x:Key="Str_Grant1h">1 giờ</sys:String>
+    <sys:String x:Key="Str_Grant4h">4 giờ</sys:String>
+    <sys:String x:Key="Str_GrantUntilOff">Đến khi tắt</sys:String>
+    <sys:String x:Key="Str_GrantRemainingFmt">Còn {0}</sys:String>
+    <sys:String x:Key="Str_BtnGrantAction">Cho AI thao tác</sys:String>
+    <sys:String x:Key="Str_BtnRevokeGrant">Thu hồi</sys:String>
+
+    <!-- Telegram Channel -->
+    <sys:String x:Key="Str_SecTg">KÊNH TELEGRAM (THÔNG BÁO &amp; LEO THANG)</sys:String>
+    <sys:String x:Key="Str_ChkTgEnabled">Bật kênh Telegram</sys:String>
+    <sys:String x:Key="Str_LblTgToken">Bot Token (mã hóa DPAPI):</sys:String>
+    <sys:String x:Key="Str_LblTgChatId">Chat ID người sở hữu:</sys:String>
+    <sys:String x:Key="Str_LblTgTimeout">Thời gian chờ trả lời (phút):</sys:String>
+    <sys:String x:Key="Str_BtnTgTest">Gửi thử</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgEnabled">Bật/tắt gửi thông báo và câu hỏi leo thang tới Telegram của người sở hữu.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgToken">Token bí mật từ @BotFather. Được mã hóa an toàn bằng DPAPI người dùng hiện tại (CurrentUser).</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgChatId">Chat ID của người sở hữu. Hệ thống chỉ chấp nhận tin nhắn và phản hồi nút bấm từ chat này.</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgTimeout">Thời gian chờ trả lời tối đa trước khi tự động chọn phương án an toàn (mặc định 30 phút).</sys:String>
+    <sys:String x:Key="Str_Tooltip_TgTest">Gửi tin nhắn mẫu kiểm tra kết nối tới Telegram bot và chat ID đã cấu hình.</sys:String>
+    <sys:String x:Key="Str_MsgTgUnconfigured">Chưa cấu hình Token hoặc Chat ID.</sys:String>
+    <sys:String x:Key="Str_MsgTgTestSuccess">Gửi thử thành công!</sys:String>
+    <sys:String x:Key="Str_MsgTgTestFailed">Gửi thử thất bại: {0}</sys:String>
+    <!-- Run Data Store & History (lane G3) -->
+    <sys:String x:Key="Str_TabRunHistory">Lịch sử chạy</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabRunHistory">Xem lịch sử các lần chạy scenario và sandbox</sys:String>
+    <sys:String x:Key="Str_CardRunHistory">Lịch sử chạy</sys:String>
+    <sys:String x:Key="Str_BtnOpenReport">Mở báo cáo</sys:String>
+    <sys:String x:Key="Str_BtnOpenFolder">Mở thư mục</sys:String>
+    <sys:String x:Key="Str_FilterSuite">Lọc theo suite hoặc mã...</sys:String>
+    <sys:String x:Key="Str_FilterVerdict">Kết quả</sys:String>
+    <sys:String x:Key="Str_SecRunStore">THƯ MỤC DỮ LIỆU CHẠY</sys:String>
+    <sys:String x:Key="Str_LblRunStoreRoot">Thư mục dữ liệu chạy:</sys:String>
+    <sys:String x:Key="Str_BtnBrowse">Chọn...</sys:String>
+    <sys:String x:Key="Str_TxtNoRuns">Chưa có dữ liệu lần chạy nào.</sys:String>
+    <sys:String x:Key="Str_ColRunId">Mã chạy</sys:String>
+    <sys:String x:Key="Str_ColSuite">Suite</sys:String>
+    <sys:String x:Key="Str_ColTrigger">Kích hoạt</sys:String>
+    <sys:String x:Key="Str_ColStarted">Bắt đầu</sys:String>
+    <sys:String x:Key="Str_ColDuration">Thời lượng</sys:String>
+    <sys:String x:Key="Str_ColActions">Thao tác</sys:String>
+
+    <!-- Scenario Runner & Nightly Schedule (lane W2-C) -->
+    <sys:String x:Key="Str_TabScenarioRunner">Chạy kịch bản</sys:String>
+    <sys:String x:Key="Str_Tooltip_TabScenarioRunner">Quản lý thư viện kịch bản và lịch chạy đêm tự động</sys:String>
+    <sys:String x:Key="Str_ScenarioLibraryTitle">Thư viện kịch bản kiểm thử</sys:String>
+    <sys:String x:Key="Str_ScenarioLibraryFolder">Thư mục:</sys:String>
+    <sys:String x:Key="Str_BtnSelectAll">Chọn tất cả</sys:String>
+    <sys:String x:Key="Str_BtnSelectNone">Bỏ chọn</sys:String>
+    <sys:String x:Key="Str_ColScenarioName">Tên kịch bản / Suite</sys:String>
+    <sys:String x:Key="Str_ColRevitVer">Phiên bản</sys:String>
+    <sys:String x:Key="Str_ColLastVerdict">Kết quả trước</sys:String>
+    <sys:String x:Key="Str_ColLastRunTime">Thời gian chạy trước</sys:String>
+    <sys:String x:Key="Str_ColDescription">Mô tả</sys:String>
+    <sys:String x:Key="Str_BtnRunBatch">Chạy đã chọn</sys:String>
+    <sys:String x:Key="Str_BtnStopBatch">Dừng</sys:String>
+    <sys:String x:Key="Str_LabelElapsed">Đã chạy:</sys:String>
+    <sys:String x:Key="Str_LabelProgress">Tiến độ:</sys:String>
+    <sys:String x:Key="Str_LabelCurrentStep">Bước hiện tại:</sys:String>
+    <sys:String x:Key="Str_BtnViewHistory">Xem trong Lịch sử chạy</sys:String>
+    <sys:String x:Key="Str_BtnOpenLastRun">Mở thư mục vừa chạy</sys:String>
+    <sys:String x:Key="Str_ScheduleTitle">Lịch chạy đêm</sys:String>
+    <sys:String x:Key="Str_ScheduleSubtitle">Tự động chạy các kịch bản theo giờ</sys:String>
+    <sys:String x:Key="Str_ScheduleEnableToggle">Bật lịch chạy đêm tự động</sys:String>
+    <sys:String x:Key="Str_ScheduleTimeLabel">Giờ chạy (HH:mm):</sys:String>
+    <sys:String x:Key="Str_ScheduleRevitYearLabel">Năm phiên bản Revit:</sys:String>
+    <sys:String x:Key="Str_ScheduleDaysLabel">Các ngày trong tuần:</sys:String>
+    <sys:String x:Key="Str_ScheduleNextRunLabel">LƯỢT CHẠY TIẾP THEO</sys:String>
+    <sys:String x:Key="Str_BtnSaveSchedule">Lưu cài đặt lịch chạy</sys:String>
+    <sys:String x:Key="Str_ScheduleNoticeTitle">Lưu ý chạy tự động:</sys:String>
+    <sys:String x:Key="Str_ScheduleNoticeBody">RevitAgent Host phải tiếp tục chạy và màn hình máy tính không bị khóa để Revit thao tác giao diện (chạy scripts\check-unattended.ps1 để kiểm tra).</sys:String>
+    <sys:String x:Key="Str_SecScenarioLibrary">THƯ MỤC KỊCH BẢN</sys:String>
+    <sys:String x:Key="Str_LblScenarioLibraryDir">Thư mục kịch bản:</sys:String>
+
+</ResourceDictionary>

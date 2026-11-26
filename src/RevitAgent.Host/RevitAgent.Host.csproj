@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RevitAgent.Contracts\RevitAgent.Contracts.csproj" />
+    <ProjectReference Include="..\RevitAgent.Core\RevitAgent.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+  </ItemGroup>
+
+  <Target Name="CopyLocalizationFiles" AfterTargets="Build">
+    <Copy SourceFiles="Resources\Localization\Strings.vi-VN.xaml" DestinationFolder="$(TargetDir)Resources\Localization" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Resources\Localization\Strings.en-US.xaml" DestinationFolder="$(TargetDir)Resources\Localization" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Resources\Themes\DarkTheme.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Resources\Themes\LightTheme.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="Resources\Themes\IconGeometries.xaml" DestinationFolder="$(TargetDir)Resources\Themes" SkipUnchangedFiles="true" />
+  </Target>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>
