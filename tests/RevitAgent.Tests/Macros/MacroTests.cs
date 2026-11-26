@@ -22,6 +22,8 @@ public class BuiltinMacroTests
         Assert.True(library.Issues.Count == 0, string.Join("\n", library.Issues));
         Assert.Contains("create-schedule", library.Names);
         Assert.Contains("run-addin-command", library.Names);
+        Assert.Contains("run-revit-command", library.Names);
+        Assert.Contains("read-schedule", library.Names);
         Assert.Equal(MacroLibrary.ReadBuiltins().Count, library.Macros.Count);
     }
 
@@ -351,6 +353,51 @@ public class MacroRunTests
     }
 
     [Fact]
+    public async Task RunRevitCommand_PostsTheNameAsGiven_WaitsWhenAsked_AndListsDialogs()
+    {
+        await using var host = new MacroHost();
+        var r = await host.CallOkAsync("macro_run", new { name = "run-revit-command", args = new { pid = 999, command = "VisibilityOrGraphics", wait_window = "Visibility/Graphics" } });
+
+        var post = host.Last("command_post");
+        Assert.Equal(999, post.GetProperty("pid").GetInt32());
+        Assert.Equal("VisibilityOrGraphics", post.GetProperty("command").GetString());
+        var wait = host.Last("ui_wait");
+        Assert.Equal("Visibility/Graphics", wait.GetProperty("window").GetString());
+        Assert.Equal(20, wait.GetProperty("timeout_s").GetInt32());
+        Assert.Equal(1, host.Count("revit_list_dialogs"));
+
+        var result = r.GetProperty("result");
+        Assert.Equal("VisibilityOrGraphics", result.GetProperty("command_id").GetString());
+        Assert.Equal(1, result.GetProperty("dialog_count").GetInt32());
+    }
+
+    [Fact]
+    public async Task RunRevitCommand_SkipsWaitWithoutWindow()
+    {
+        await using var host = new MacroHost();
+        await host.CallOkAsync("macro_run", new { name = "run-revit-command", args = new { pid = 999, command = "ReviewWarnings" } });
+        Assert.Equal(0, host.Count("ui_wait"));
+        Assert.Equal(1, host.Count("command_post"));
+    }
+
+    [Fact]
+    public async Task ReadSchedule_ForwardsOffsetAndLimit_AndReturnsThePage()
+    {
+        await using var host = new MacroHost();
+        var r = await host.CallOkAsync("macro_run", new { name = "read-schedule", args = new { pid = 999, view_id = 777, offset = 1000, limit = 500 } });
+
+        var read = host.Last("schedule_read");
+        Assert.Equal(777, read.GetProperty("view_id").GetInt64());
+        Assert.Equal(1000, read.GetProperty("offset").GetInt32());
+        Assert.Equal(500, read.GetProperty("limit").GetInt32());
+        Assert.False(read.TryGetProperty("name", out _));
+
+        var result = r.GetProperty("result");
+        Assert.Equal(2, result.GetProperty("rows").GetArrayLength());
+        Assert.False(result.GetProperty("truncated").GetBoolean());
+    }
+
+    [Fact]
     public async Task CreateSchedule_ForwardsTypedArgs_OmitsUnsetOnes_AndReturnsRows()
     {
         await using var host = new MacroHost();
@@ -564,10 +611,11 @@ internal sealed class MacroHost : IAsyncDisposable
                 header_rows = 2,
                 header_cells = new[] { new[] { "Level", "Number", "Name" }, new[] { string.Empty, string.Empty, string.Empty } },
                 data_rows = 2,
+                offset = c.GetInt("offset"),
                 returned_rows = 2,
                 truncated = false,
                 rows = new[] { new[] { "L1", "101", "Office" }, new[] { "L1", "102", "Hall" } },
             },
-        }, () => Schema.Object().Pid().String("document", "d").Integer("view_id", "v").String("name", "n").Integer("limit", "l"));
+        }, () => Schema.Object().Pid().String("document", "d").Integer("view_id", "v").String("name", "n").Integer("offset", "o").Integer("limit", "l"));
     }
 }

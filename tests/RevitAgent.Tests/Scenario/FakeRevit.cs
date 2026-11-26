@@ -286,7 +286,7 @@ public sealed class FakeRevit
                 truncated = false,
                 rows = new[] { new[] { "Office", "101", "20 m²" }, new[] { "Hall", "102", "35 m²" } },
             },
-        }, () => Schema.Object().Pid().String("name", "n"));
+        }, () => Schema.Object().Pid().String("name", "n").Integer("offset", "o").Integer("limit", "l"));
         yield return new FakeTool("model_list_views", ToolPermission.Read, _ => new { views = new[] { new { name = "Level 1", type = "FloorPlan" }, new { name = "Room Schedule", type = "Schedule" } } }, () => Schema.Object().Pid().Integer("limit", "l"));
         yield return new FakeTool("command_post", ToolPermission.Interact, _ => new { posted = true }, () => Schema.Object().Pid().String("command_id", "c", required: true));
         yield return new FakeTool("ui_click", ToolPermission.Interact, c => new

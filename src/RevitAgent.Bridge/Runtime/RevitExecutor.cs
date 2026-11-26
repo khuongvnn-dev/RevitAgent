@@ -171,7 +171,7 @@ namespace RevitAgent.Bridge.Runtime
 
                 if (name == "OperationCanceledException")
                 {
-                    return new BridgeToolException(GatewayErrorCodes.Conflict, "Revit cancelled '" + tool + "' (" + message + "). A dialog may have been cancelled; check dialog_list_events.");
+                    return new BridgeToolException(GatewayErrorCodes.Conflict, "Revit cancelled '" + tool + "' (" + message + "). A dialog may have been cancelled; check revit_list_dialogs.");
                 }
 
                 if (name.IndexOf("InvalidOperation", StringComparison.Ordinal) >= 0 || name.IndexOf("Modification", StringComparison.Ordinal) >= 0 ||

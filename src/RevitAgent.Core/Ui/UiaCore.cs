@@ -158,17 +158,17 @@ public sealed class UiaCore : IDisposable
 
         if (hr == UiaNoClickablePoint || typeName == "NoClickablePointException")
         {
-            return GatewayException.NotReady("The element has no clickable point (offscreen, hidden or virtualized). Scroll it into view (ui_scroll direction=into) first.");
+            return GatewayException.NotReady("The element has no clickable point (offscreen, hidden or virtualized). Scroll it into view first (the full profile has ui_scroll).");
         }
 
         if (hr == UiaTimeout || hr == RpcCallRejected || hr == RpcServerCallRetryLater || ex is TimeoutException || typeName == "TimeoutException")
         {
-            return GatewayException.NotReady("Target UI not responding (UI Automation timed out; the application is busy or blocked by a modal dialog). Check ui_list_windows / revit_get_state and retry.");
+            return GatewayException.NotReady("Target UI not responding (UI Automation timed out; the application is busy or blocked by a modal dialog). Check revit_list_dialogs and retry.");
         }
 
         if (hr == RpcServerUnavailable)
         {
-            return GatewayException.NotFound("The target process is gone (UI Automation lost the connection). Call ui_list_windows.");
+            return GatewayException.NotFound("The target process is gone (UI Automation lost the connection). Check revit_list_instances.");
         }
 
         if (hr == EAccessDenied || ex is UnauthorizedAccessException)

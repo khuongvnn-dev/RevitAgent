@@ -107,4 +107,4 @@ Nhánh `feature/gateway-v2`.
 
 ## Giấy phép
 
-Giấy phép: chủ dự án sẽ quyết định sau (TBD).
+Giấy phép: [MIT](LICENSE).

@@ -1,0 +1,46 @@
+# Built-in macro (embedded in RevitAgent.Core). Format: docs/agent-guide/macros.md
+name: read-schedule
+summary: Read one page of data rows of a schedule (offset + limit), to check a large schedule completely.
+description: >-
+  Reads a schedule view with schedule_read, as Revit displays it. Identify it by view_id or exact name. Pages: the first
+  call uses offset 0; while truncated is true, call again with offset = offset + returned_rows. data_rows is the total
+  number of data rows (all pages). Read-only.
+requires: [bridge]
+params:
+  pid:
+    type: integer
+    required: true
+    description: Revit process id (revit_list_instances).
+  view_id:
+    type: integer
+    description: Schedule view id (from create-schedule or model_query_elements class ViewSchedule).
+  name:
+    type: string
+    description: Exact schedule name (case-insensitive), when view_id is not given.
+  offset:
+    type: integer
+    default: 0
+    description: Data rows to skip (heading rows are not counted).
+  limit:
+    type: integer
+    default: 100
+    description: Data rows in this page (max 1000).
+steps:
+  - id: read
+    tool: schedule_read
+    args:
+      pid: ${pid}
+      view_id: ${view_id}
+      name: ${name}
+      offset: ${offset}
+      limit: ${limit}
+returns:
+  view_id: ${read.id}
+  name: ${read.name}
+  fields: ${read.fields}
+  header_cells: ${read.body.header_cells}
+  data_rows: ${read.body.data_rows}
+  offset: ${read.body.offset}
+  returned_rows: ${read.body.returned_rows}
+  truncated: ${read.body.truncated}
+  rows: ${read.body.rows}

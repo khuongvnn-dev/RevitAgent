@@ -102,7 +102,7 @@ namespace RevitAgent.Bridge.Tools
             if (id.HasValue)
             {
                 return doc.GetElement(Ids.Make(id.Value)) as View
-                    ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "Element " + id.Value + " is not a view in '" + doc.Title + "'. Use model_list_views.");
+                    ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "Element " + id.Value + " is not a view in '" + doc.Title + "'. Find views with model_query_elements(class: \"View3D\" or \"ViewPlan\" or \"ViewSection\", fields: [\"Name\"]).");
             }
 
             var name = ctx.Args.Str("name");
@@ -117,7 +117,7 @@ namespace RevitAgent.Bridge.Tools
                 .ToList();
             if (matches.Count == 0)
             {
-                throw new BridgeToolException(GatewayErrorCodes.NotFound, "No view named '" + name + "'. Use model_list_views(name_contains=...).");
+                throw new BridgeToolException(GatewayErrorCodes.NotFound, "No view named '" + name + "'. Find views with model_query_elements(class: \"View3D\" or \"ViewPlan\" or \"ViewSection\", fields: [\"Name\"]).");
             }
 
             if (matches.Count > 1)

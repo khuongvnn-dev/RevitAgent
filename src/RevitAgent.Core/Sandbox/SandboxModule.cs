@@ -7,5 +7,9 @@ namespace RevitAgent.Core.Sandbox;
 /// <summary>Sandbox (runs folder) services.</summary>
 public sealed class SandboxModule : IGatewayModule
 {
-    public void ConfigureServices(IServiceCollection services) => services.TryAddSingleton<SandboxService>();
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.TryAddSingleton<EvidenceService>();
+        services.TryAddSingleton<SandboxService>();
+    }
 }

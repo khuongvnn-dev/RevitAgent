@@ -88,7 +88,7 @@ same process (modal dialogs!). Snapshot a subtree (`ref`/`selector`) when a wind
 | `ui_find` | Read | Selector → matches with refs. |
 | `ui_inspect` | Read | All properties, supported patterns, values, bounds (screen + window-relative), default action. |
 | `ui_read_table` | Read | Grid/table/list → `headers` + `rows` (GridPattern/TablePattern, else row children; WinForms DataGridView "Top Row"). Virtualized grids return realized rows only. |
-| `ui_screenshot` | Read | PNG of the window or an element, returned scaled to ≤ `max_width` (1600) + `{path, width, height, scale}`; saved under `<home>\captures` or `save_path` inside the gateway captures/runs folders. Every result has `method` and `captured_window {pid, title}`. See "Screenshot methods" below. Never activates or restores the window. |
+| `ui_screenshot` | Read | PNG of the window or an element, returned scaled to ≤ `max_width` (1600) + `{path, width, height, scale}`; saved in the session's current run `evidence\` folder (see [run-data.md](run-data.md)), else under `<home>\captures`, or at `save_path` inside the gateway captures/runs folders. Report the `path` of the result; it is listed in `evidence\index.jsonl`. Every result has `method` and `captured_window {pid, title}`. See "Screenshot methods" below. Never activates or restores the window. |
 | `ui_wait` | Read | Window appears / gone, element appears / gone / enabled; `TIMEOUT` error with the last state. |
 | `ui_expect` | Read | Retrying assertion → `{pass, message, actual, target}`; `is` (exists, gone, enabled, disabled, visible, hidden, focused, checked, unchecked, mixed, selected, expanded, collapsed), `text` (+`exact`), `match` (regex), `count`. |
 | `ui_click` | Interact | Pattern first: Invoke → Toggle → SelectionItem → ExpandCollapse → default action; then a real mouse click. `button=right`, `double=true`, `mouse=true` force the mouse. `x`,`y` without ref/selector = window-relative pixels (canvas). |
@@ -157,7 +157,7 @@ are that tool's arguments. Property names are case-insensitive.
 ```
 
 - Tool arguments: `pid` (required), `script_path` or inline `script`, `out_dir` (inside the gateway
-  runs/captures folders; default `<home>\runs\ui-scripts\<name>_<time>`), `vars`, `screenshots`,
+  runs/captures folders; default `<current run>\evidence\ui-scripts\<name>_<time>`, else `<home>\runs\ui-scripts\<name>_<time>`), `vars`, `screenshots`,
   `validate_only`, `timeout_s` (600).
 - Top-level keys: `name`, `timeout` (seconds per step, default 10), `screenshots` (`fail` | `each` | `none`),
   `vars`, `dialogs`, `steps`.

@@ -211,7 +211,7 @@ namespace RevitAgent.Bridge.Tools
             sw.Stop();
             if (doc == null)
             {
-                throw new BridgeToolException(GatewayErrorCodes.Conflict, "Revit did not open '" + full + "' (it returned no document). A dialog may have cancelled the open; check dialog_list_events.");
+                throw new BridgeToolException(GatewayErrorCodes.Conflict, "Revit did not open '" + full + "' (it returned no document). A dialog may have cancelled the open; check revit_list_dialogs.");
             }
 
             DocumentOrigins.Remember(doc, full);
@@ -247,7 +247,7 @@ namespace RevitAgent.Bridge.Tools
             var key = ctx.Args.Str("document") ?? ctx.Args.Str("path") ?? ctx.Args.Str("title");
             var doc = key == null
                 ? ctx.ActiveDocument ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No document is open.")
-                : ctx.FindOpenDocument(key) ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No open document matches '" + key + "'. Use doc_list_open.");
+                : ctx.FindOpenDocument(key) ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No open document matches '" + key + "'. Pass the title or path of an open document (doc_open opens one).");
             if (doc.IsLinked)
             {
                 throw ToolArgs.Invalid("'" + doc.Title + "' is a linked model; it closes with its host document.");

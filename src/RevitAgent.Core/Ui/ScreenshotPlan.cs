@@ -47,7 +47,7 @@ public static class ScreenshotPlan
     public const string SessionLocked = "session_locked";
     public const string DesktopNotRendered = "desktop_not_rendered";
 
-    public const string Hint = "view_export_image renders the model view without the screen (Revit with the Bridge).";
+    public const string Hint = "The full tool profile has view_export_image, which renders the model view without the screen (Revit with the Bridge).";
 
     public static ScreenshotDecision Decide(ScreenshotFacts f)
     {

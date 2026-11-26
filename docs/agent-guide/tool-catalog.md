@@ -139,7 +139,7 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 |---|---|---|---|---|
 | `schedule_create` |  | Write | `pid`*, `document`, `category`*, `fields`*, `sort_by`, `sort_descending`, `name`, `activate` | Create a schedule view (category, fields, optional sort) in a sandbox copy in one transaction; SANDBOX_VIOLATION otherwise. Read it with `schedule_read`. |
 | `schedule_list_schedulable_categories` |  | Read | `pid`*, `document`, `category`, `name_contains`, `limit` | List categories Revit can schedule; with `category`, check one (`check.schedulable`). |
-| `schedule_read` |  | Read | `pid`*, `document`, `view_id`, `name`, `limit` | Read a schedule as displayed: `fields`, header, `body` {header_rows, header_cells, data_rows, returned_rows, truncated, rows}. |
+| `schedule_read` |  | Read | `pid`*, `document`, `view_id`, `name`, `offset`, `limit` | Read a schedule as displayed: `fields`, header, `body` {header_rows, header_cells, data_rows (total), offset, returned_rows, truncated, rows}. `offset` skips data rows to page through large schedules (`truncated`: more rows follow). |
 
 ## `selection_*`
 
@@ -174,4 +174,4 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 | Tool | Core | Permission | Parameters | Description |
 |---|---|---|---|---|
 | `view_activate` | yes | Interact | `pid`*, `document`, `view_id`, `name`, `type` | Make a view of the active document the active view (`view_id`, or exact `name` + `type`). |
-| `view_export_image` |  | Read | `pid`*, `document`, `view_id`, `name`, `pixel_width`, `save_path` | Render a view (default: the active one) to PNG with the Revit API. Works when Revit is covered, minimized, locked or RDP-disconnected. Returns {path, width, height, view_id, view_name, document}; saved under captures or `save_path` inside captures/runs (else `SANDBOX_VIOLATION`). Not in the `core` profile. |
+| `view_export_image` |  | Read | `pid`*, `document`, `view_id`, `name`, `pixel_width`, `save_path` | Render a view (default: the active one) to PNG with the Revit API. Works when Revit is covered, minimized, locked or RDP-disconnected. Returns {path, width, height, view_id, view_name, document}; saved in the session's current run `evidence` folder (else captures) or at `save_path` inside captures/runs (else `SANDBOX_VIOLATION`); cite the returned path. Not in the `core` profile. |

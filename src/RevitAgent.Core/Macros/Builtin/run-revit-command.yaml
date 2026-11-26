@@ -1,0 +1,54 @@
+# Built-in macro (embedded in RevitAgent.Core). Format: docs/agent-guide/macros.md
+name: run-revit-command
+summary: Run a built-in Revit command by name (e.g. VisibilityOrGraphics, ReviewWarnings) without clicking the ribbon.
+description: >-
+  Posts a Revit command as if the user clicked it (command_post: Interact, needs the dashboard grant for a Revit the
+  user started), optionally waits for a window whose title contains 'wait_window' (ui_wait), then lists the dialogs
+  blocking Revit (revit_list_dialogs). 'command' is passed to command_post as is: a PostableCommand name (case-insensitive,
+  exact, e.g. VisibilityOrGraphics, ReviewWarnings, ScheduleOrQuantities, CloseInactiveViews) or a command id such as
+  ID_OBJECTS_WALL or an add-in's CustomCtrl_%... id. An unknown command stops the macro with NOT_FOUND. The command runs
+  after it is posted: without wait_window the dialogs are listed right away and may not show it yet. Dialogs are only
+  listed, never answered. Commands that save, synchronize or close the model are refused.
+requires: [bridge, ui]
+params:
+  pid:
+    type: integer
+    required: true
+    description: Revit process id (revit_list_instances).
+  command:
+    type: string
+    required: true
+    description: PostableCommand name (e.g. VisibilityOrGraphics) or command id (e.g. ID_OBJECTS_WALL).
+  wait_window:
+    type: string
+    description: Title substring of the window the command should open; empty = do not wait.
+  timeout_s:
+    type: integer
+    default: 20
+    description: Seconds to wait for wait_window (max 300).
+steps:
+  - id: post
+    tool: command_post
+    args:
+      pid: ${pid}
+      command: ${command}
+  - id: wait
+    tool: ui_wait
+    when: ${wait_window}
+    args:
+      pid: ${pid}
+      window: ${wait_window}
+      timeout_s: ${timeout_s}
+  - id: dialogs
+    tool: revit_list_dialogs
+    args:
+      pid: ${pid}
+returns:
+  command_id: ${post.command_id}
+  resolved_as: ${post.resolved_as}
+  revit_activated: ${post.revit_activated}
+  activation_note: ${post.activation_note}
+  window: ${wait.window}
+  waited_ms: ${wait.waited_ms}
+  dialog_count: ${dialogs.count}
+  dialogs: ${dialogs.dialogs}

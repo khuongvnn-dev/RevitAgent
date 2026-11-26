@@ -81,7 +81,7 @@ public sealed class ActionGuard
                 throw GatewayException.Denied(
                     $"Tool '{tool.Name}' would act on Revit pid {pid}, which the user started (not launched by the gateway). " +
                     $"Ask the user to enable \"{DashboardSwitch}\" for it on the RevitAgent dashboard (time-limited), then retry. " +
-                    "Read-only tools (revit_list_instances, ui_snapshot, doc_info, model_*, ...) still work without it. " +
+                    "Read-only tools (revit_list_instances, ui_snapshot, model_query_elements, ...) still work without it. " +
                     "Or launch your own Revit with revit_launch (only if the user asked).",
                     new { pid, needs = "action_grant" });
             }

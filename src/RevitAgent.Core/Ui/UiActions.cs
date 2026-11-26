@@ -46,7 +46,7 @@ public static class UiActions
                 if (!Bounded(op, () => inv.Invoke(), 3000))
                 {
                     r["blocked"] = true;
-                    op.Notes.Add("the Invoke call is still blocked after 3 s — a modal dialog probably opened; call ui_list_windows to find it");
+                    op.Notes.Add("the Invoke call is still blocked after 3 s — a modal dialog probably opened; call revit_list_dialogs to find it");
                 }
 
                 return r;
@@ -485,7 +485,7 @@ public static class UiActions
         var el = t.Wrap(op.Core);
         if (!el.Patterns.Toggle.TryGetPattern(out var tg))
         {
-            throw GatewayException.Validation($"{t.Node.Describe()} does not support toggle (use ui_click or ui_select).");
+            throw GatewayException.Validation($"{t.Node.Describe()} does not support toggle (use ui_click).");
         }
 
         if (!t.Node.Enabled)

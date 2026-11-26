@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using RevitAgent.Core.Composition;
 
 namespace RevitAgent.Core.Ui;
@@ -8,6 +9,7 @@ public sealed class UiModule : IGatewayModule
 {
     public void ConfigureServices(IServiceCollection services)
     {
+        services.TryAddSingleton<Sandbox.EvidenceService>();
         services.AddSingleton<UiAutomationService>();
     }
 }

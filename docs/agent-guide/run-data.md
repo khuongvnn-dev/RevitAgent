@@ -64,6 +64,8 @@ Every scenario run (through `scenario_run` or the dashboard) and every sandbox r
 
 7. **`evidence\`**
    - UI screenshots, viewport images and other visual diagnostics collected during the run.
+   - **Current run.** When an MCP session creates or uses a run (`sandbox_create_run`, `sandbox_copy_model`, or `doc_open` of a model copy inside a run folder), that run becomes the session's *current run*; `doc_open` also remembers pid -> run. Every capture then defaults to `<run>\evidence\` instead of `<home>\captures`: `ui_screenshot` and `view_export_image` without `save_path`, `revit_list_dialogs` / `revit_get_state` with `include_screenshot`, `ui_run_script` without `out_dir` (`evidence\ui-scripts\<name>_<time>`), and the gateway's own dialog captures for that Revit pid (add-in trust, safe dismiss, escalation, timeouts). The session's run wins over the pid's; with no run the captures folder is used. An explicit `save_path` / `out_dir` keeps working with the same sandbox checks. Default names are sortable: `<HHmmss-fff>_<tool>_<detail>.png`.
+   - **`evidence\index.jsonl`.** Whenever the gateway writes a file into a run's `evidence\` folder (default or explicit path, any depth) it appends one JSON line (append-only, file-locked): `{"at", "file", "tool", "session_id", "pid", "call_id", "kind", "bytes"}`. `file` is the absolute path, `kind` is `screenshot`, `dialog`, `report` or `export`, `bytes` the size when written. A report that cites an evidence file can be verified against this index: a cited file that is not listed (or not on disk) was not captured by the gateway. Always cite the `path` a tool result returned.
 
 8. **`logs\`**
    - `audit.jsonl`: the tool-call audit records of the run's time window, sliced from the gateway's audit log.

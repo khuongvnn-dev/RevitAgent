@@ -96,6 +96,8 @@ internal sealed class BridgeForwardingTool : IGatewayTool
             result = _definition.After(pid, result);
         }
 
+        NoteEvidence(call, pid, args);
+
         if (handled.Count > 0 && JsonNode.Parse(result.GetRawText()) is JsonObject obj)
         {
             obj["handled_dialogs"] = JsonSerializer.SerializeToNode(handled, GatewayJson.Options);
@@ -148,6 +150,28 @@ internal sealed class BridgeForwardingTool : IGatewayTool
 
         args["document"] = Path.GetFullPath(file);
         return args;
+    }
+
+    /// <summary>
+    /// After a successful call: doc_open of a model inside a run makes that run current for the session and the pid;
+    /// view_export_image files are added to the evidence index when they landed in a run's evidence folder.
+    /// </summary>
+    private void NoteEvidence(ToolCall call, int pid, JsonObject args)
+    {
+        var evidence = _services.Evidence;
+        if (evidence is null)
+        {
+            return;
+        }
+
+        if (Name == BridgeToolNames.DocOpen && args["path"]?.GetValue<string>() is { Length: > 0 } model)
+        {
+            evidence.NoteModelOpened(call.SessionId, pid, model);
+        }
+        else if (Name == BridgeToolNames.ViewExportImage && args["save_path"]?.GetValue<string>() is { Length: > 0 } shot)
+        {
+            evidence.Record(shot, "screenshot", Name, call.SessionId, pid, call.CallId);
+        }
     }
 
     /// <summary>Budget of the doc_info call that resolves the target document of a <see cref="BridgeToolDefinition.SandboxDocument"/> tool.</summary>
@@ -206,7 +230,8 @@ public sealed class BridgeModule : IGatewayModule
         services.TryAddSingleton<IRevitProcessProbe, SystemRevitProcessProbe>();
         services.TryAddSingleton(new BridgeClientOptions());
         services.TryAddSingleton<BridgeClient>();
-        services.TryAddSingleton(sp => new BridgeToolServices(sp.GetRequiredService<GatewayPolicy>(), sp.GetRequiredService<AgentPaths>()));
+        services.TryAddSingleton<Sandbox.EvidenceService>();
+        services.TryAddSingleton(sp => new BridgeToolServices(sp.GetRequiredService<GatewayPolicy>(), sp.GetRequiredService<AgentPaths>(), sp.GetRequiredService<Sandbox.EvidenceService>()));
         services.TryAddSingleton(sp => BridgeInstallEnvironment.ForCurrentUser(sp.GetRequiredService<AgentPaths>(), sp.GetRequiredService<IRevitProcessProbe>()));
         services.TryAddSingleton<BridgeInstaller>();
 

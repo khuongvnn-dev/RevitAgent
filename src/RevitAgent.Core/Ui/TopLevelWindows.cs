@@ -234,7 +234,7 @@ public sealed class WindowSpec
             EnsureProcessAlive(pid);
             var main = TopLevelWindows.PickMain(TopLevelWindows.List(pid));
             return main ?? throw GatewayException.NotFound(
-                $"Process {pid} has no visible top-level window (still starting, minimized to tray, or a different desktop). Retry with ui_wait or check ui_list_windows.");
+                $"Process {pid} has no visible top-level window (still starting, minimized to tray, or a different desktop). Retry shortly, or check revit_list_instances.");
         }
 
         if (spec.StartsWith("hwnd:", StringComparison.OrdinalIgnoreCase))
@@ -305,7 +305,7 @@ public sealed class WindowSpec
             }
 
             throw GatewayException.NotFound(
-                $"No top-level window matches '{spec}'{(Pid is { } p2 ? $" in process {p2}" : string.Empty)}. Call ui_list_windows to see the open windows.");
+                $"No top-level window matches '{spec}'{(Pid is { } p2 ? $" in process {p2}" : string.Empty)}. Take a ui_snapshot of the main window: its header lists the other windows of the process.");
         }
 
         if (processSpec && matches.Count > 1)
@@ -321,7 +321,7 @@ public sealed class WindowSpec
         var w = TopLevelWindows.Describe(new IntPtr(hwnd));
         if (w is null)
         {
-            throw GatewayException.NotFound($"No window with handle {UiText.Hex(hwnd)} (it was closed). Call ui_list_windows.");
+            throw GatewayException.NotFound($"No window with handle {UiText.Hex(hwnd)} (it was closed). Take a new ui_snapshot.");
         }
 
         // A child-control handle is accepted: use its top-level window.

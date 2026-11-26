@@ -5,6 +5,7 @@ using RevitAgent.Contracts.Protocol;
 using RevitAgent.Core.Audit;
 using RevitAgent.Core.Notify;
 using RevitAgent.Core.Revit.Native;
+using RevitAgent.Core.Sandbox;
 using RevitAgent.Core.Tools;
 using RevitAgent.Core.Ui;
 
@@ -161,12 +162,14 @@ public sealed class RevitReadiness : IRevitReadiness
     private readonly AuditLog _audit;
     private readonly IHumanEscalation? _escalation;
     private readonly INotifier? _notifier;
+    private readonly EvidenceService _evidence;
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _locks = new();
 
     public RevitReadiness(
         AgentPaths paths, DialogRuleProvider rules, LaunchedProcessRegistry launched, GatewayEvents events, AddinAllowlist allowlist, AuditLog audit,
-        IHumanEscalation? escalation = null, INotifier? notifier = null)
+        IHumanEscalation? escalation = null, INotifier? notifier = null, EvidenceService? evidence = null)
     {
+        _evidence = evidence ?? new EvidenceService();
         _escalation = escalation;
         _notifier = notifier;
         _paths = paths;
@@ -561,14 +564,14 @@ public sealed class RevitReadiness : IRevitReadiness
             throw new GatewayException(
                 b.Kind == BlockerKinds.Hung ? GatewayErrorCodes.TargetNotReady : GatewayErrorCodes.ModalBlocked,
                 b.Kind == BlockerKinds.Hung
-                    ? $"Revit (pid {pid}) is not responding. Wait with revit_wait_ready before acting."
+                    ? $"Revit (pid {pid}) is not responding. Retry in a few seconds."
                     : $"Revit (pid {pid}) is blocked by '{b.Window.Title}' ({b.Kind}). Inspect it with revit_list_dialogs.",
                 new { blockers = snap.Blockers.Select(x => new { hwnd = x.Window.HwndHex, title = x.Window.Title, kind = x.Kind }).ToArray() });
         }
 
         if (snap.Main is null)
         {
-            throw GatewayException.NotReady($"Revit (pid {pid}) has no main window yet (still starting?). Call revit_wait_ready.");
+            throw GatewayException.NotReady($"Revit (pid {pid}) has no main window yet (still starting?). Retry in a few seconds.");
         }
     }
 
@@ -586,9 +589,12 @@ public sealed class RevitReadiness : IRevitReadiness
     /// <summary>Saves a PNG of <paramref name="window"/> (5 s limit; PrintWindow may stall on a hung target). Returns the path or null.</summary>
     public string? Capture(int pid, WindowInfo window, string tag, string? dir = null)
     {
-        var folder = dir ?? Path.Combine(_paths.CapturesDir, "dialogs");
+        // No explicit folder: the current run of that Revit (its model copy was opened there), else captures\dialogs.
+        var folder = dir ?? _evidence.EvidenceDirFor(null, pid) ?? Path.Combine(_paths.CapturesDir, "dialogs");
         var safeTag = Regex.Replace(tag, "[^A-Za-z0-9_.-]", "_");
-        var path = Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-pid{pid}-{window.HwndHex}-{safeTag}.png");
+        var path = EvidenceService.FindEvidenceDir(Path.Combine(Path.GetFullPath(folder), "x")) is not null
+            ? Path.Combine(folder, EvidenceService.FileName(EvidenceService.CurrentCaller?.Tool ?? "gateway", $"dialog-{safeTag}-pid{pid}-{window.HwndHex}", ".png"))
+            : Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-pid{pid}-{window.HwndHex}-{safeTag}.png");
         var saved = 0;
         var thread = new Thread(() =>
         {
@@ -614,7 +620,13 @@ public sealed class RevitReadiness : IRevitReadiness
         })
         { IsBackground = true, Name = "RevitAgent blocker screenshot" };
         thread.Start();
-        return thread.Join(ScreenshotTimeout) && saved == 1 ? path : null;
+        if (thread.Join(ScreenshotTimeout) && saved == 1)
+        {
+            _evidence.Record(path, "dialog", pid: pid);
+            return path;
+        }
+
+        return null;
     }
 
     /// <summary>Reads details, classifies and matches rules for one raw blocker.</summary>
@@ -634,7 +646,7 @@ public sealed class RevitReadiness : IRevitReadiness
                 Category = DialogCategories.Unknown,
                 Note = raw.Kind == BlockerKinds.Hung
                     ? "Main window is Not Responding (busy with a long operation, or hung)."
-                    : "Main window is disabled but no modal window could be identified (try ui_list_windows / ui_screenshot).",
+                    : "Main window is disabled but no modal window could be identified (try ui_snapshot / ui_screenshot).",
             };
         }
 
@@ -1198,7 +1210,7 @@ public sealed class RevitReadiness : IRevitReadiness
             "Revit may be busy with a long operation: call revit_wait_ready again later. If it never recovers, ask the user before closing it (revit_close)."),
         BlockerKinds.Disabled => (GatewayErrorCodes.ModalBlocked,
             $"Revit main window '{b.Title}' is disabled by a modal window that is not a standard dialog (for {b.SeenForSec:0} s).",
-            "Find the modal window with ui_list_windows / ui_screenshot and close it with the ui_* tools if it is informational; otherwise ask the user."),
+            "Find the modal window with revit_list_dialogs / ui_screenshot and close it with the ui_* tools if it is informational; otherwise ask the user."),
         _ => (GatewayErrorCodes.ModalBlocked,
             $"Dialog '{b.Title}' has no rule and is still open after {b.SeenForSec:0} s.",
             "Read it (revit_list_dialogs; screenshot attached). If it is clearly informational, answer it with revit_handle_dialog; if unsure, ask the user. " +

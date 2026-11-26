@@ -25,8 +25,32 @@ A macro is a **fixed, verified chain of tool calls** for a common task (create a
 |---|---|---|---|
 | `create-schedule` | bridge | `pid:int*, category:string*, fields:string[]*, sort_by:string[], sort_descending:bool, name:string, limit:int=100` | `schedule_create` then `schedule_read`; returns `{view_id, name, fields, data_rows, truncated, rows}` (`rows` holds data rows only, not the column headings; `data_rows` is the count of rows below the headings and `limit` caps data rows). Changes the model (creates a view): runs only on a sandbox copy. |
 | `run-addin-command` | bridge, ui | `pid:int*, text:string*, tab:string, wait_window:string, timeout_s:int=20` | `ribbon_list_items` (exactly **one** postable button matching `text`) then `command_post`, then `ui_wait` for the window `wait_window` (skipped when empty), then `revit_list_dialogs`; returns the button pressed, the window and the dialogs. Dialogs are only listed, never answered. |
+| `run-revit-command` | bridge, ui | `pid:int*, command:string*, wait_window:string, timeout_s:int=20` | `command_post` with a built-in Revit command (a `PostableCommand` name or a command id), then `ui_wait` for the window `wait_window` (skipped when empty), then `revit_list_dialogs`; returns `{command_id, resolved_as, window, dialog_count, dialogs}`. No ribbon click and no coordinates. |
+| `read-schedule` | bridge | `pid:int*, view_id:int, name:string, offset:int=0, limit:int=100` | `schedule_read` for one page of data rows (`limit` max 1000, `offset` = data rows to skip); returns `{view_id, name, fields, header_cells, data_rows, offset, returned_rows, truncated, rows}`. Read-only. |
 
 Traps: without `wait_window`, `run-addin-command` lists dialogs right after posting, so the command may not have opened anything yet. Several matching buttons give `EXPECTATION_FAILED` with `step_details.sample`: narrow `text` or add `tab`.
+
+### Run a built-in Revit command
+
+`run-revit-command` posts the command exactly as given: no search, so the name must be exact (case-insensitive). An unknown name gives `NOT_FOUND`. Examples (names from the Revit API `PostableCommand` enum):
+
+```json
+{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "VisibilityOrGraphics", "wait_window": "Visibility/Graphics" } } }
+{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "ReviewWarnings", "wait_window": "Warnings" } } }
+{ "tool": "macro_run", "args": { "name": "run-revit-command", "args": { "pid": 12345, "command": "ScheduleOrQuantities", "wait_window": "New Schedule" } } }
+```
+
+- Other names: `CloseInactiveViews`, `ManageLinks`, `ProjectUnits`. A command id (`ID_OBJECTS_WALL`, an add-in's `CustomCtrl_%...`) works in the same `command` field.
+- `wait_window` is a title substring and depends on the Revit language; without it the dialogs are listed right after posting and the command may not have opened anything yet. The dialog stays open: close it with `revit_handle_dialog` or the UI tools.
+- Commands that save, synchronize or close the model are refused (`PERMISSION_DENIED`).
+
+### Read a large schedule page by page
+
+`schedule_read` and `read-schedule` return `limit` data rows starting at `offset`. Loop: call with `offset: 0`; while `truncated` is true, call again with `offset` + `returned_rows`. `data_rows` is the total, so the pages can be checked against it. `create-schedule` reads only the first page: use `read-schedule` with its `view_id` for the rest.
+
+```json
+{ "tool": "macro_run", "args": { "name": "read-schedule", "args": { "pid": 12345, "view_id": 777, "offset": 1000, "limit": 1000 } } }
+```
 
 ## YAML format
 

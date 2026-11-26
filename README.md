@@ -105,4 +105,4 @@ Branch `feature/gateway-v2`.
 
 ## License
 
-License: TBD by the owner.
+[MIT](LICENSE).

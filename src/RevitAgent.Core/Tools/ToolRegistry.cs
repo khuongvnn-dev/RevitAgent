@@ -79,7 +79,12 @@ public sealed class ToolRegistry
             budget = tool.TimeoutFor(call);
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(budget);
-            var work = tool.ExecuteAsync(call, timeoutCts.Token);
+            Task<ToolResult> work;
+            using (Sandbox.EvidenceService.Enter(call))
+            {
+                work = tool.ExecuteAsync(call, timeoutCts.Token);
+            }
+
             try
             {
                 result = await work.WaitAsync(budget + TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);

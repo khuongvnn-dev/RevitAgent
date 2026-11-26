@@ -13,6 +13,7 @@ public sealed class RevitModule : IGatewayModule
         services.TryAddSingleton<AddinAllowlist>();       // read-only: tools and the readiness gate
         services.TryAddSingleton<AddinAllowlistStore>();  // write side: dashboard only (no MCP tool may use it)
         services.TryAddSingleton<LaunchedProcessRegistry>();
+        services.TryAddSingleton<Sandbox.EvidenceService>();
         services.TryAddSingleton<RevitReadiness>();
         services.TryAddSingleton<IRevitReadiness>(sp => sp.GetRequiredService<RevitReadiness>());
         services.TryAddSingleton<RevitProcessService>();

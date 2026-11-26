@@ -76,6 +76,7 @@ namespace RevitAgent.Bridge.Tools
             var doc = ctx.Document();
             var args = ctx.Args;
             var limit = args.Limit("limit", 100, 1000);
+            var offset = args.Offset();
             var schedule = Find(doc, args);
             var table = schedule.GetTableData();
             var definition = schedule.Definition;
@@ -107,7 +108,7 @@ namespace RevitAgent.Bridge.Tools
                 { "is_itemized", definition.IsItemized },
                 { "fields", fields },
                 { "header", Title(schedule, table, 50) },
-                { "body", Body(schedule, table, headings, definition.ShowHeaders, limit) },
+                { "body", Body(schedule, table, headings, definition.ShowHeaders, limit, offset) },
             };
             return result;
         }
@@ -390,10 +391,10 @@ namespace RevitAgent.Bridge.Tools
             if (id.HasValue)
             {
                 return doc.GetElement(Ids.Make(id.Value)) as ViewSchedule
-                    ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "Element " + id.Value + " is not a schedule view. Use model_list_views(type=schedule).");
+                    ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "Element " + id.Value + " is not a schedule view. Find schedules with model_query_elements(class: \"ViewSchedule\", fields: [\"Name\"]).");
             }
 
-            var name = args.Str("name") ?? throw ToolArgs.Invalid("Pass 'view_id' or 'name' of the schedule (model_list_views with type=schedule lists them).");
+            var name = args.Str("name") ?? throw ToolArgs.Invalid("Pass 'view_id' or 'name' of the schedule (model_query_elements with class ViewSchedule lists them).");
             var matches = new FilteredElementCollector(doc).OfClass(typeof(ViewSchedule)).Cast<ViewSchedule>()
                 .Where(s => !s.IsTemplate && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
             if (matches.Count == 1)
@@ -407,7 +408,7 @@ namespace RevitAgent.Bridge.Tools
                     new WireObject { { "ids", matches.Select(m => (object?)Ids.Of(m.Id)).ToList() } });
             }
 
-            throw new BridgeToolException(GatewayErrorCodes.NotFound, "No schedule named '" + name + "'. Use model_list_views(type=schedule).");
+            throw new BridgeToolException(GatewayErrorCodes.NotFound, "No schedule named '" + name + "'. Find schedules with model_query_elements(class: \"ViewSchedule\", fields: [\"Name\"]).");
         }
 
         /// <summary>The title section (SectionType.Header): every row as text.</summary>
@@ -438,9 +439,9 @@ namespace RevitAgent.Bridge.Tools
 
         /// <summary>
         /// The body section split into its header (grouped-header captions, column headings, spacer row: see
-        /// <see cref="ScheduleHeader.CountHeaderRows"/>) and its data rows; <paramref name="limit"/> caps data rows only.
+        /// <see cref="ScheduleHeader.CountHeaderRows"/>) and its data rows; <paramref name="offset"/> data rows are skipped and <paramref name="limit"/> caps the rows returned.
         /// </summary>
-        private static WireObject? Body(ViewSchedule schedule, TableData table, List<string?> headings, bool showHeaders, int limit)
+        private static WireObject? Body(ViewSchedule schedule, TableData table, List<string?> headings, bool showHeaders, int limit, int offset)
         {
             var section = SectionData(table, SectionType.Body);
             if (section == null)
@@ -459,7 +460,8 @@ namespace RevitAgent.Bridge.Tools
             var headerRows = detected ?? 0;
             var dataRows = rowCount - headerRows;
             var rows = new List<object?>();
-            for (var i = headerRows; i < rowCount && rows.Count < limit; i++)
+            var first = headerRows + Math.Min(offset, Math.Max(0, dataRows));
+            for (var i = first; i < rowCount && rows.Count < limit; i++)
             {
                 rows.Add(i < leading.Count ? leading[i] : Row(schedule, section, SectionType.Body, i));
             }
@@ -470,8 +472,9 @@ namespace RevitAgent.Bridge.Tools
                 { "header_rows", headerRows },
                 { "header_cells", leading.Take(headerRows).Cast<object?>().ToList() },
                 { "data_rows", dataRows },
+                { "offset", offset },
                 { "returned_rows", rows.Count },
-                { "truncated", rows.Count < dataRows },
+                { "truncated", offset + rows.Count < dataRows },
                 { "rows", rows },
             };
             if (detected == null)

@@ -232,7 +232,7 @@ namespace RevitAgent.Bridge.Tools
             var doc = FindOpenDocument(key, exactPath);
             return doc ?? throw new BridgeToolException(
                 GatewayErrorCodes.NotFound,
-                "No open document matches '" + key + "'. Use doc_list_open and pass its title or path as 'document'.");
+                "No open document matches '" + key + "'. Pass the title or path of an open document as 'document' (doc_open opens one).");
         }
 
         /// <summary>

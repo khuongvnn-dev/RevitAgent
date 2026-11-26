@@ -371,7 +371,7 @@ public sealed class UiScreenshotTool : UiToolBase
         var selector = SelectorArg(call);
         var maxWidth = Math.Clamp(call.GetInt("max_width", 1600) ?? 1600, 100, 4000);
         var includeImage = call.GetBool("include_image", true);
-        var path = ResolveSavePath(call.GetString("save_path"));
+        var path = ResolveSavePath(call.GetString("save_path"), call.SessionId, spec.Pid);
 
         var outcome = await CaptureAsync(call.SessionId, spec, reference, selector, maxWidth, includeImage, path, _bridge is not null, null, cancellationToken).ConfigureAwait(false);
         if (outcome.Info is null)
@@ -392,6 +392,11 @@ public sealed class UiScreenshotTool : UiToolBase
             {
                 outcome = await CaptureAsync(call.SessionId, spec, reference, selector, maxWidth, includeImage, path, false, bridgeError, cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        if (outcome.Info!.TryGetValue("path", out var written) && written is string writtenPath)
+        {
+            Ui.Evidence.Record(writtenPath, "screenshot", call.Name, call.SessionId, outcome.PendingPid > 0 ? outcome.PendingPid : spec.Pid, call.CallId);
         }
 
         var result = ToolResult.Json(outcome.Info!);
@@ -544,11 +549,14 @@ public sealed class UiScreenshotTool : UiToolBase
         });
     }
 
-    private string ResolveSavePath(string? requested)
+    private string ResolveSavePath(string? requested, string sessionId, int? pid)
     {
         if (string.IsNullOrWhiteSpace(requested))
         {
-            return Path.Combine(Ui.Paths.CapturesDir, $"ui_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
+            // Current run's evidence folder (session, then pid) when there is one, else the captures folder.
+            return Ui.Evidence.EvidenceDirFor(sessionId, pid) is { } evidence
+                ? Ui.Evidence.DefaultPath(sessionId, pid, Name, null, ".png", evidence)
+                : Path.Combine(Ui.Paths.CapturesDir, $"ui_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
         }
 
         var full = UiPaths.Evidence(Ui.Paths, requested, Ui.Paths.CapturesDir);

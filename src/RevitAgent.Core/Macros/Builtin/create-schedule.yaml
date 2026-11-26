@@ -5,7 +5,8 @@ description: >-
   Creates a new schedule in the active (or given) document with schedule_create, then reads it with schedule_read.
   It changes the model (a new view): work on a sandbox copy. If unsure whether Revit can schedule the category,
   check it with schedule_list_schedulable_categories. Field names are parameter names as Revit shows them in
-  Schedule Properties (e.g. Name, Elevation for Levels).
+  Schedule Properties (e.g. Name, Elevation for Levels). Only the first `limit` data rows are read back; for
+  further pages call the read-schedule macro with the returned view_id and an offset.
 requires: [bridge]
 params:
   pid:

@@ -34,7 +34,7 @@ public sealed class RevitGetStateTool : GatewayTool
     protected override Schema BuildSchema() => Schema.Object()
         .Pid(required: false)
         .Boolean("include_details", "Read texts and buttons of each dialog (WM_GETTEXT / UI Automation with timeouts).", defaultValue: true)
-        .Boolean("include_screenshot", "Attach a PNG of each blocker (max 3) and save it (captures\\dialogs or the run's evidence folder).", defaultValue: false)
+        .Boolean("include_screenshot", "Attach a PNG of each blocker (max 3); cite its path.", defaultValue: false)
         .String("run_id", "Save screenshots into this sandbox run's evidence folder (from sandbox_create_run).");
 
     public override Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public sealed class RevitGetStateTool : GatewayTool
         var pid = RevitToolHelpers.ResolvePid(call, required: false);
         RevitToolHelpers.EnsureRevitTarget(pid, _launched);
         var includeShots = call.GetBool("include_screenshot");
-        var dir = includeShots ? RevitToolHelpers.EvidenceDir(call, _sandbox) ?? Path.Combine(_paths.CapturesDir, "dialogs") : null;
+        var dir = includeShots ? RevitToolHelpers.DialogShotDir(call, pid, _sandbox, _paths) : null;
         var state = _readiness.GetState(pid, call.GetBool("include_details", true), dir);
         var result = ToolResult.Json(state);
         return Task.FromResult(includeShots ? RevitToolHelpers.AttachScreenshots(result, state.Blockers.Select(b => b.ScreenshotPath)) : result);

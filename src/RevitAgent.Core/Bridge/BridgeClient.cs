@@ -267,7 +267,7 @@ public sealed class BridgeClient
 
     private static GatewayException NotLoaded(int pid, string pipeName) =>
         GatewayException.Dependency(
-            $"RevitAgent Bridge is not loaded in Revit pid {pid}. Install it with bridge_install and restart that Revit. " +
+            $"RevitAgent Bridge is not loaded in Revit pid {pid}. Install it with bridge_install and restart that Revit. (A core-profile client cannot call bridge_install: ask the user to install the Bridge.) " +
             "(If Revit was started moments ago it may still be loading, or a startup dialog such as 'Security - Unsigned Add-In' for another add-in may be waiting: check revit_list_dialogs.)",
             new { pid, pipe = pipeName });
 

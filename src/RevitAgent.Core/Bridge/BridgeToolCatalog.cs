@@ -7,7 +7,7 @@ using RevitAgent.Core.Tools;
 namespace RevitAgent.Core.Bridge;
 
 /// <summary>Services a <see cref="BridgeToolDefinition.Prepare"/> hook may use (policy, sandbox paths).</summary>
-public sealed record BridgeToolServices(GatewayPolicy Policy, AgentPaths Paths);
+public sealed record BridgeToolServices(GatewayPolicy Policy, AgentPaths Paths, Sandbox.EvidenceService? Evidence = null);
 
 /// <summary>
 /// One gateway tool that forwards to the Bridge tool of the same name. Adding a Bridge tool to the gateway
@@ -185,11 +185,12 @@ public static class BridgeToolCatalog
             "Read a schedule view as text exactly as Revit displays it: fields (name, heading, hidden), header (title rows) and body. " +
             "body.rows holds data rows only; the heading rows (grouped headers, column headings, the blank row under them) are in body.header_cells, counted by body.header_rows. " +
             "body.data_rows counts all rows below the headings, including grouping header/footer, blank and grand-total rows: it equals the element count only for an itemized schedule without those. " +
-            "limit caps data rows; truncated=true means more exist. Identify the schedule by view_id or exact name (model_list_views with type=schedule)." + Requires,
+            "offset skips data rows, limit caps the page; truncated=true means more rows follow. Identify the schedule by view_id or exact name (model_query_elements class ViewSchedule)." + Requires,
             s => s
                 .String("document", DocArg)
                 .Integer("view_id", "Schedule view id.")
                 .String("name", "Exact schedule name (case-insensitive).")
+                .Integer("offset", "Data rows to skip (paging).", defaultValue: 0, minimum: 0)
                 .Integer("limit", "Maximum data rows (default 100, max 1000).", defaultValue: 100, minimum: 1, maximum: 1000),
             TimeoutSeconds: 120),
 
@@ -251,7 +252,7 @@ public static class BridgeToolCatalog
             "Make a view of the active document the active view (view_id, or exact name plus optional type). Find views with model_query_elements (class View3D, ViewPlan...). Returns the new and previous view." + Requires,
             s => s
                 .String("document", "Must be the active document.")
-                .Integer("view_id", "View id (model_list_views).")
+                .Integer("view_id", "View id.")
                 .String("name", "Exact view name (case-insensitive).")
                 .String("type", "View kind to disambiguate a name, e.g. floor_plan, 3d, schedule, sheet.")),
 
@@ -259,10 +260,10 @@ public static class BridgeToolCatalog
             BridgeToolNames.ViewExportImage,
             ToolPermission.Read,
             "Render a view to PNG with the Revit API (ExportImage): independent of the screen, so it works when Revit is covered, minimized, or the session is locked or RDP-disconnected. " +
-            "Default: the active view of the document. Returns {path, width, height, view_id, view_name, document}; the image is saved under captures (or save_path inside captures/runs). Shows the model view only, not the UI." + Requires,
+            "Default: the active view of the document. Returns {path, width, height, view_id, view_name, document}; in the run's evidence folder or save_path; cite the returned path. Shows the model view only, not the UI." + Requires,
             s => s
                 .String("document", DocArg)
-                .Integer("view_id", "View id (model_list_views).")
+                .Integer("view_id", "View id.")
                 .String("name", "Exact view name (default: the active view).")
                 .Integer("pixel_width", "Image width in pixels (default 1600, max 4096).", defaultValue: 1600, minimum: 64, maximum: 4096)
                 .String("save_path", "PNG path inside the gateway captures or runs folder."),

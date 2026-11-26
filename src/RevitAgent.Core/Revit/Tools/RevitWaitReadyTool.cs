@@ -66,7 +66,7 @@ public sealed class RevitWaitReadyTool : GatewayTool
             ApplyRules = call.GetBool("apply_rules", true),
             RequireBridgePipe = call.GetBool("require_bridge"),
             EscalateForbiddenDialogs = call.GetBool("escalate_dialogs"),
-            EvidenceDir = RevitToolHelpers.EvidenceDir(call, _sandbox),
+            EvidenceDir = RevitToolHelpers.EvidenceDir(call, _sandbox) ?? _sandbox.Evidence.EvidenceDirFor(call.SessionId, pid),
             SafeDismissFor = Name,
         };
 

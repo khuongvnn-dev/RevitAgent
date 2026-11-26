@@ -77,6 +77,13 @@ internal static class RevitToolHelpers
     public static string? EvidenceDir(ToolCall call, SandboxService sandbox) =>
         call.GetString("run_id") is { Length: > 0 } runId ? sandbox.EvidenceDir(runId) : null;
 
+    /// <summary>
+    /// Folder for dialog screenshots: the explicit <c>run_id</c>'s evidence folder, else the current run's (session, then pid),
+    /// else <c>captures\dialogs</c>.
+    /// </summary>
+    public static string DialogShotDir(ToolCall call, int pid, SandboxService sandbox, AgentPaths paths) =>
+        EvidenceDir(call, sandbox) ?? sandbox.Evidence.EvidenceDirFor(call.SessionId, pid) ?? Path.Combine(paths.CapturesDir, "dialogs");
+
     /// <summary>Attaches up to <see cref="MaxImages"/> saved screenshots as images.</summary>
     public static ToolResult AttachScreenshots(ToolResult result, IEnumerable<string?> paths)
     {

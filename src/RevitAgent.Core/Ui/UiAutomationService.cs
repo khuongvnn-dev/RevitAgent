@@ -73,11 +73,15 @@ public sealed class UiAutomationService : IDisposable
     private readonly SemaphoreSlim _inputLock = new(1, 1);
     private readonly AuditLog _audit;
 
-    public UiAutomationService(AgentPaths paths, AuditLog audit)
+    public UiAutomationService(AgentPaths paths, AuditLog audit, Sandbox.EvidenceService? evidence = null)
     {
         Paths = paths;
         _audit = audit;
+        Evidence = evidence ?? new Sandbox.EvidenceService();
     }
+
+    /// <summary>Session/pid to run mapping and the evidence index (default capture folders).</summary>
+    public Sandbox.EvidenceService Evidence { get; }
 
     public AgentPaths Paths { get; }
 
@@ -122,7 +126,7 @@ public sealed class UiAutomationService : IDisposable
                 _ = task.ContinueWith(t => _audit.Diagnostic($"UI work finished after its {budget.TotalSeconds:0}s budget: {t.Status}", t.Exception), TaskScheduler.Default);
                 throw GatewayException.NotReady(
                     $"Target UI not responding: UI Automation did not answer within {budget.TotalSeconds:0.#}s (the application is busy or blocked by a modal dialog). " +
-                    "Check ui_list_windows / revit_get_state, then retry.");
+                    "Check revit_list_dialogs, then retry.");
             }
         }
         finally
@@ -221,7 +225,7 @@ public sealed class UiAutomationService : IDisposable
         {
             if (!allowWindow)
             {
-                throw GatewayException.Validation("Pass 'ref' (from ui_snapshot / ui_find, e.g. e12) or 'selector' (e.g. id=btnOk, name=\"OK\" type=Button).");
+                throw GatewayException.Validation("Pass 'ref' (from ui_snapshot, e.g. e12) or 'selector' (e.g. id=btnOk, name=\"OK\" type=Button).");
             }
 
             return new UiTarget { Window = window, Element = root, Node = op.Core.ReadLive(root), IsWindow = true };
@@ -433,18 +437,18 @@ public sealed class UiAutomationService : IDisposable
         var set = Refs.Find(op.Session, hwnd, spec.Pid ?? op.RestrictPid);
         if (set is null)
         {
-            throw GatewayException.NotFound($"No refs for {(spec.IsEmpty ? "this session" : spec.ToString())} yet: take a ui_snapshot (or ui_find) of the window first.");
+            throw GatewayException.NotFound($"No refs for {(spec.IsEmpty ? "this session" : spec.ToString())} yet: take a ui_snapshot of the window first.");
         }
 
         var window = TopLevelWindows.Describe(new IntPtr(set.Hwnd))
-            ?? throw GatewayException.NotFound($"The window of ref '{reference}' ({UiText.Hex(set.Hwnd)} \"{set.Title}\") no longer exists. Call ui_list_windows and take a new snapshot.");
+            ?? throw GatewayException.NotFound($"The window of ref '{reference}' ({UiText.Hex(set.Hwnd)} \"{set.Title}\") no longer exists. Take a new ui_snapshot.");
         if (op.RestrictPid is { } rp && window.ProcessId != rp)
         {
             throw GatewayException.Denied($"Ref '{reference}' belongs to process {window.ProcessId}; this run may only drive process {rp}.");
         }
 
         var entry = set.Get(reference)
-            ?? throw GatewayException.NotFound($"Unknown ref '{reference}' for window \"{UiText.Clip(window.Title, 60)}\" — refs come from the latest ui_snapshot / ui_find of that window. Take a new snapshot.");
+            ?? throw GatewayException.NotFound($"Unknown ref '{reference}' for window \"{UiText.Clip(window.Title, 60)}\" — refs come from the latest ui_snapshot of that window. Take a new snapshot.");
 
         try
         {

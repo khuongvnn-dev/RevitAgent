@@ -94,7 +94,7 @@ namespace RevitAgent.Bridge.Tools
             var className = args.Str("class");
             if (categoryKey == null && className == null)
             {
-                throw ToolArgs.Invalid("Pass 'category' (e.g. OST_Levels or a display name like 'Walls') and/or 'class' (e.g. Wall, FamilyInstance). Use model_list_categories to find names.");
+                throw ToolArgs.Invalid("Pass 'category' (e.g. OST_Levels or a display name like 'Walls') and/or 'class' (e.g. Wall, FamilyInstance). Category names are OST_* values such as OST_Walls.");
             }
 
             var limit = args.Limit();
@@ -394,7 +394,7 @@ namespace RevitAgent.Bridge.Tools
                     return (id, new WireObject { { "id", Ids.Of(id) }, { "name", cat?.Name }, { "builtin", bic.ToString() } });
                 }
 
-                throw new BridgeToolException(GatewayErrorCodes.NotFound, "Unknown BuiltInCategory '" + key + "'. Use model_list_categories to see the categories of this model.");
+                throw new BridgeToolException(GatewayErrorCodes.NotFound, "Unknown BuiltInCategory '" + key + "'. Pass an OST_* name such as OST_Walls or a category display name.");
             }
 
             foreach (Category c in doc.Settings.Categories)
@@ -405,7 +405,7 @@ namespace RevitAgent.Bridge.Tools
                 }
             }
 
-            throw new BridgeToolException(GatewayErrorCodes.NotFound, "No category named '" + key + "' in this model. Use model_list_categories (names are localized) or pass a BuiltInCategory such as OST_Walls.");
+            throw new BridgeToolException(GatewayErrorCodes.NotFound, "No category named '" + key + "' in this model. Display names are localized: pass a BuiltInCategory such as OST_Walls instead.");
         }
 
         public static Type? ResolveElementClass(string name)

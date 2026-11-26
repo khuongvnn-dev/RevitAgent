@@ -73,7 +73,7 @@ public sealed class UiRunScriptTool : UiToolBase
         WindowSpec.EnsureProcessAlive(pid);
         UiEnvironment.EnsureDesktop();
         UiEnvironment.EnsureNotElevatedAboveUs(pid);
-        var runDir = ResolveOutDir(call.GetString("out_dir"), script.Name);
+        var runDir = ResolveOutDir(call.GetString("out_dir"), script.Name, call.SessionId, pid);
         var overall = Seconds(call, "timeout_s", 600, 1800);
         var vars = ReadVars(call);
         var screenshots = call.GetString("screenshots");
@@ -82,6 +82,7 @@ public sealed class UiRunScriptTool : UiToolBase
         var report = await Ui.RunAsync(session, overall + TimeSpan.FromSeconds(60), input: true, cancellationToken, op =>
             new UiScriptRunner(op, script, validation.Rules, pid, runDir, screenshots, overall, vars).Run(validation.Warnings)).ConfigureAwait(false);
 
+        Ui.Evidence.RecordDirectory(report.RunDir, call.Name, call.SessionId, pid);
         return ToolResult.Json(new
         {
             status = report.Verdict,
@@ -136,7 +137,7 @@ public sealed class UiRunScriptTool : UiToolBase
         return v.ValueKind == JsonValueKind.String ? UiScript.Parse(v.GetString() ?? string.Empty) : UiScript.FromElement(v.Clone());
     }
 
-    private string ResolveOutDir(string? requested, string name)
+    private string ResolveOutDir(string? requested, string name, string sessionId, int pid)
     {
         var root = Path.GetFullPath(Ui.Paths.Root).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         string dir;
@@ -148,7 +149,10 @@ public sealed class UiRunScriptTool : UiToolBase
                 safe = safe[..60];
             }
 
-            dir = Path.Combine(Ui.Paths.RunsDir, "ui-scripts", $"{safe}_{DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture)}");
+            var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+            dir = Ui.Evidence.EvidenceDirFor(sessionId, pid) is { } evidence
+                ? Path.Combine(evidence, "ui-scripts", $"{safe}_{stamp}")
+                : Path.Combine(Ui.Paths.RunsDir, "ui-scripts", $"{safe}_{stamp}");
         }
         else
         {

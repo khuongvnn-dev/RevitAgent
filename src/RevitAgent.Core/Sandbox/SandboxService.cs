@@ -123,17 +123,28 @@ public sealed class SandboxService
     private readonly GatewayPolicy _policy;
     private readonly RunStore.RunStore? _runStore;
 
-    public SandboxService(AgentPaths paths, GatewayPolicy policy, RunStore.RunStore? runStore = null)
+    public SandboxService(AgentPaths paths, GatewayPolicy policy, RunStore.RunStore? runStore = null, EvidenceService? evidence = null)
     {
         _paths = paths;
         _policy = policy;
         _runStore = runStore;
+        Evidence = evidence ?? new EvidenceService();
     }
+
+    /// <summary>Session/pid to run mapping and the evidence index.</summary>
+    public EvidenceService Evidence { get; }
 
     public string RunsDir => _runStore?.RootDir ?? _paths.RunsDir;
 
     /// <summary>Creates a run folder with <c>data\</c>, <c>evidence\</c>, <c>model\</c>, <c>scenario\</c>, <c>logs\</c> and <c>run-info.json</c>.</summary>
     public SandboxRun CreateRun(string? name, string? purpose = null, string? sessionId = null)
+    {
+        var run = CreateRunCore(name, purpose, sessionId);
+        Evidence.SetSessionRun(sessionId, run.Path);
+        return run;
+    }
+
+    private SandboxRun CreateRunCore(string? name, string? purpose, string? sessionId)
     {
         if (_runStore != null)
         {
@@ -222,6 +233,7 @@ public sealed class SandboxService
         {
             dir = ResolveRunDir(runId);
             id = System.IO.Path.GetFileName(dir);
+            Evidence.SetSessionRun(sessionId, dir);
         }
         else
         {
