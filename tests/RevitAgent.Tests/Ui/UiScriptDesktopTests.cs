@@ -50,7 +50,7 @@ public class UiScriptDesktopTests
         var r = await h.CallAsync("ui_run_script", new { pid = h.Pid, script_path = scriptPath, out_dir = "smoke" });
         var steps = r.GetProperty("steps").EnumerateArray().ToArray();
         var failed = steps.Where(s => s.GetProperty("status").GetString() != "passed").Select(s => s.ToString()).ToArray();
-        Assert.True(r.GetProperty("verdict").GetString() == "passed", string.Join("\n", failed));
+        Assert.True(r.GetProperty("status").GetString() == "passed", string.Join("\n", failed));
         Assert.Equal("passed", r.GetProperty("status").GetString());
         Assert.Equal(0, r.GetProperty("failed").GetInt32());
         Assert.Equal(20, r.GetProperty("passed").GetInt32());
