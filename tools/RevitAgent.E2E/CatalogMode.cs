@@ -38,20 +38,22 @@ internal static class CatalogMode
         md.AppendLine("# RevitAgent tool catalog (generated from `tools/list`)");
         md.AppendLine();
         md.AppendLine($"{tools.Count} tools. Regenerate: `tools\\RevitAgent.E2E\\bin\\Debug\\net10.0-windows\\RevitAgent.E2E.exe catalog` (from the repo folder; calls `tools/list` + `gateway_get_info` through the Shim `--headless --profile full`). " +
-                      "Permission: Read (observe only) · Interact (UI/commands) · Write (change models/files in the sandbox) · Admin (processes, installs). `*` = required.");
+                      "Permission: Read (observe only) · Interact (UI/commands) · Write (change models/files in the sandbox) · Admin (processes, installs). `*` = required. " +
+                      $"Core = listed in the default `core` profile ({RevitAgent.Core.Mcp.ToolProfiles.CoreTools.Count(n => tools.ContainsKey(n))} tools); other tools need `--profile full` or a macro.");
         foreach (var (area, list) in groups.OrderBy(g => g.Key, StringComparer.Ordinal))
         {
             md.AppendLine();
             md.AppendLine($"## `{area}_*`");
             md.AppendLine();
-            md.AppendLine("| Tool | Permission | Parameters | Description (short) |");
-            md.AppendLine("|---|---|---|---|");
+            md.AppendLine("| Tool | Core | Permission | Parameters | Description (short) |");
+            md.AppendLine("|---|---|---|---|---|");
             foreach (var entry in (list?.AsArray() ?? new System.Text.Json.Nodes.JsonArray()).OrderBy(e => e?["name"]?.GetValue<string>(), StringComparer.Ordinal))
             {
                 var name = entry?["name"]?.GetValue<string>() ?? "?";
                 var permission = entry?["permission"]?.GetValue<string>() ?? "?";
                 tools.TryGetValue(name, out var tool);
-                md.AppendLine($"| `{name}` | {permission} | {Arguments(tool?.JsonSchema)} | {Short(tool?.Description)} |");
+                var core = RevitAgent.Core.Mcp.ToolProfiles.Lists(RevitAgent.Core.Mcp.ToolProfiles.Core, name) ? "yes" : "";
+                md.AppendLine($"| `{name}` | {core} | {permission} | {Arguments(tool?.JsonSchema)} | {Short(tool?.Description)} |");
             }
         }
 
