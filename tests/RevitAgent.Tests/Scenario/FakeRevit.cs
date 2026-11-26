@@ -88,8 +88,8 @@ public sealed class FakeRevit
 
     public int StateCalls { get; private set; }
 
-    /// <summary>ui_run_script status word ("PASSED", "FAILED", "BLOCKED").</summary>
-    public string UiStatus { get; set; } = "PASSED";
+    /// <summary>ui_run_script status word ("passed", "failed", "blocked").</summary>
+    public string UiStatus { get; set; } = "passed";
 
     /// <summary>ui_list_windows shows an extra titled window after a ui step.</summary>
     public bool LeaveWindowOpen { get; set; }
@@ -175,7 +175,7 @@ public sealed class FakeRevit
             var runObj = new System.Text.Json.Nodes.JsonObject
             {
                 ["id"] = id,
-                ["suite"] = c.GetString("name") ?? "run",
+                ["scenario"] = c.GetString("name") ?? "run",
                 ["started_at"] = DateTimeOffset.Now.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             };
             if (!string.IsNullOrWhiteSpace(prevRunId))
@@ -245,7 +245,7 @@ public sealed class FakeRevit
             var n = doc.RootElement.GetProperty("steps").GetArrayLength();
             var outDir = c.RequireString("out_dir");
             File.WriteAllText(Path.Combine(outDir, "report.json"), "{}");
-            var failed = UiStatus == "FAILED" ? 1 : 0;
+            var failed = UiStatus == "failed" ? 1 : 0;
             return new { status = UiStatus, passed = n - failed, failed, steps = n, out_dir = outDir };
         }, () => Schema.Object().String("script_path", "s").String("script", "s").Integer("pid", "p").String("out_dir", "o"));
         yield return new FakeTool("ui_list_windows", ToolPermission.Read, _ =>

@@ -14,7 +14,7 @@ namespace RevitAgent.Core.RunStore;
 
 /// <summary>
 /// Service managing scenario and sandbox run folders, run.json metadata, and index.jsonl.
-/// Every run lives in &lt;root&gt;\&lt;yyyy-MM&gt;\&lt;yyyy-MM-dd&gt;\&lt;HHmmss&gt;_&lt;suite-slug&gt;_&lt;id6&gt;\.
+/// Every run lives in &lt;root&gt;\&lt;yyyy-MM&gt;\&lt;yyyy-MM-dd&gt;\&lt;HHmmss&gt;_&lt;scenario-slug&gt;_&lt;id6&gt;\.
 /// Nothing is ever deleted; existing run folders are never overwritten.
 /// </summary>
 public sealed class RunStore
@@ -45,7 +45,7 @@ public sealed class RunStore
     /// Never reuses or overwrites an existing folder.
     /// </summary>
     public RunFolder CreateRun(
-        string? suite,
+        string? scenario,
         string trigger = "manual",
         string? purpose = null,
         string? sessionId = null,
@@ -56,7 +56,7 @@ public sealed class RunStore
         string? rerunOf = null)
     {
         var now = DateTimeOffset.Now;
-        var slug = FormatSlug(suite);
+        var slug = FormatSlug(scenario);
         var root = RootDir;
         var monthFolder = now.ToString("yyyy-MM", CultureInfo.InvariantCulture);
         var dayFolder = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -93,7 +93,7 @@ public sealed class RunStore
         var runObj = new JsonObject
         {
             ["id"] = runId,
-            ["suite"] = string.IsNullOrWhiteSpace(suite) ? "run" : suite.Trim(),
+            ["scenario"] = string.IsNullOrWhiteSpace(scenario) ? "run" : scenario.Trim(),
             ["trigger"] = string.IsNullOrWhiteSpace(trigger) ? "manual" : trigger.Trim(),
             ["machine"] = Environment.MachineName,
             ["user"] = Environment.UserName,
@@ -126,7 +126,7 @@ public sealed class RunStore
         var infoObj = new JsonObject
         {
             ["run_id"] = runId,
-            ["name"] = string.IsNullOrWhiteSpace(suite) ? null : suite.Trim(),
+            ["name"] = string.IsNullOrWhiteSpace(scenario) ? null : scenario.Trim(),
             ["purpose"] = string.IsNullOrWhiteSpace(purpose) ? null : purpose.Trim(),
             ["created_at"] = now.ToString("O", CultureInfo.InvariantCulture),
             ["session_id"] = sessionId,
@@ -155,7 +155,7 @@ public sealed class RunStore
             ModelDir = modelDir,
             LogsDir = logsDir,
             StartedAt = now,
-            Suite = suite ?? "run",
+            Scenario = scenario ?? "run",
             Trigger = trigger,
         };
     }
@@ -186,7 +186,7 @@ public sealed class RunStore
         }
 
         var runId = runObj["id"]?.GetValue<string>() ?? Path.GetFileName(runDir.TrimEnd('\\', '/'));
-        var suite = runObj["suite"]?.GetValue<string>() ?? "run";
+        var scenario = runObj["scenario"]?.GetValue<string>() ?? runObj["suite"]?.GetValue<string>() ?? "run"; // "suite" = legacy key
         var trigger = runObj["trigger"]?.GetValue<string>() ?? "manual";
         var startedAtStr = runObj["started_at"]?.GetValue<string>();
         var startedAt = DateTimeOffset.TryParse(startedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var st)
@@ -261,7 +261,7 @@ public sealed class RunStore
         var indexEntry = new JsonObject
         {
             ["id"] = runId,
-            ["suite"] = suite,
+            ["scenario"] = scenario,
             ["trigger"] = trigger,
             ["verdict"] = finishInfo.Verdict,
             ["started_at"] = startedAt.ToString("O", CultureInfo.InvariantCulture),
@@ -286,10 +286,10 @@ public sealed class RunStore
     /// Records a skipped run in index.jsonl (e.g. when nightly schedule is skipped due to failing machine readiness checks).
     /// Does not create or delete any folders on disk.
     /// </summary>
-    public void RecordSkippedRun(string suite, string trigger = "schedule", string? reason = null, int? revitYear = null)
+    public void RecordSkippedRun(string scenario, string trigger = "schedule", string? reason = null, int? revitYear = null)
     {
         var now = DateTimeOffset.Now;
-        var slug = FormatSlug(suite);
+        var slug = FormatSlug(scenario);
         var id6 = Guid.NewGuid().ToString("N")[..6];
         var runId = $"{now:HHmmss}_{slug}_{id6}";
         var relativeRunDir = Path.Combine(now.ToString("yyyy-MM", CultureInfo.InvariantCulture), now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), runId);
@@ -297,7 +297,7 @@ public sealed class RunStore
         var indexEntry = new JsonObject
         {
             ["id"] = runId,
-            ["suite"] = string.IsNullOrWhiteSpace(suite) ? "run" : suite.Trim(),
+            ["scenario"] = string.IsNullOrWhiteSpace(scenario) ? "run" : scenario.Trim(),
             ["trigger"] = string.IsNullOrWhiteSpace(trigger) ? "schedule" : trigger.Trim(),
             ["verdict"] = "SKIPPED",
             ["started_at"] = now.ToString("O", CultureInfo.InvariantCulture),
@@ -441,7 +441,7 @@ public sealed class RunStore
                         var id = rootElem.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? string.Empty : string.Empty;
                         if (string.IsNullOrWhiteSpace(id)) continue;
 
-                        var suite = rootElem.TryGetProperty("suite", out var sProp) ? sProp.GetString() ?? string.Empty : string.Empty;
+                        var scenario = ReadScenarioName(rootElem) ?? string.Empty;
                         var trigger = rootElem.TryGetProperty("trigger", out var tProp) ? tProp.GetString() ?? "manual" : "manual";
                         var verdict = rootElem.TryGetProperty("verdict", out var vProp) ? vProp.GetString() ?? "UNKNOWN" : "UNKNOWN";
                         var startedStr = rootElem.TryGetProperty("started_at", out var stProp) ? stProp.GetString() : null;
@@ -468,7 +468,7 @@ public sealed class RunStore
                         runs.Add(new RunSummary
                         {
                             Id = id,
-                            Suite = suite,
+                            Scenario = scenario,
                             Trigger = trigger,
                             Verdict = verdict,
                             StartedAt = started,
@@ -549,9 +549,9 @@ public sealed class RunStore
         // 3. Apply filters
         var query = runs.AsEnumerable();
 
-        if (!string.IsNullOrWhiteSpace(filter.Suite))
+        if (!string.IsNullOrWhiteSpace(filter.Scenario))
         {
-            query = query.Where(r => r.Suite.Contains(filter.Suite, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(r => r.Scenario.Contains(filter.Scenario, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Verdict))
@@ -641,6 +641,16 @@ public sealed class RunStore
 
     public static string FormatSlug(string? name) => SandboxService.Slug(name);
 
+    /// <summary>Reads the scenario name from a run.json / index.jsonl record; accepts the legacy "suite" key written by older runs.</summary>
+    private static string? ReadScenarioName(JsonElement root)
+    {
+        foreach (var key in new[] { "scenario", "suite" })
+        {
+            if (root.TryGetProperty(key, out var p) && p.ValueKind == JsonValueKind.String) return p.GetString();
+        }
+        return null;
+    }
+
     private static void TryAddUnindexedFolder(string dir, string folderName, string root, List<RunSummary> runs, HashSet<string> seenIds, HashSet<string> seenDirs)
     {
         var runJson = Path.Combine(dir, RunJsonFile);
@@ -654,7 +664,7 @@ public sealed class RunStore
         seenIds.Add(folderName);
         seenDirs.Add(dir);
 
-        string suite = folderName;
+        string scenario = folderName;
         string trigger = "manual";
         string verdict = "RUNNING";
         DateTimeOffset started = File.GetCreationTimeUtc(dir);
@@ -670,7 +680,7 @@ public sealed class RunStore
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(runJson));
                 var rootElem = doc.RootElement;
-                suite = rootElem.TryGetProperty("suite", out var sp) ? sp.GetString() ?? suite : suite;
+                scenario = ReadScenarioName(rootElem) ?? scenario;
                 trigger = rootElem.TryGetProperty("trigger", out var tp) ? tp.GetString() ?? trigger : trigger;
                 verdict = rootElem.TryGetProperty("verdict", out var vp) && vp.ValueKind == JsonValueKind.String ? vp.GetString() ?? "RUNNING" : "RUNNING";
                 if (rootElem.TryGetProperty("started_at", out var stp) && DateTimeOffset.TryParse(stp.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var st))
@@ -702,7 +712,7 @@ public sealed class RunStore
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(runInfo));
                 var rootElem = doc.RootElement;
-                suite = rootElem.TryGetProperty("suite", out var sp) ? sp.GetString() ?? suite : rootElem.TryGetProperty("name", out var np) ? np.GetString() ?? suite : suite;
+                scenario = ReadScenarioName(rootElem) ?? (rootElem.TryGetProperty("name", out var np) ? np.GetString() ?? scenario : scenario);
                 verdict = rootElem.TryGetProperty("verdict", out var vp) ? vp.GetString() ?? "UNKNOWN" : "UNKNOWN";
                 var startedStr = rootElem.TryGetProperty("started", out var stp) ? stp.GetString() : rootElem.TryGetProperty("created_at", out var cp) ? cp.GetString() : null;
                 if (startedStr != null && DateTimeOffset.TryParse(startedStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var st))
@@ -726,7 +736,7 @@ public sealed class RunStore
         runs.Add(new RunSummary
         {
             Id = folderName,
-            Suite = suite,
+            Scenario = scenario,
             Trigger = trigger,
             Verdict = verdict,
             StartedAt = started,

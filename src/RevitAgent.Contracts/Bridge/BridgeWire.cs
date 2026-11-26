@@ -60,6 +60,7 @@ namespace RevitAgent.Contracts.Bridge
         public const string CommandListPostable = "command_list_postable";
         public const string CommandPost = "command_post";
         public const string ViewActivate = "view_activate";
+        public const string ViewExportImage = "view_export_image";
         public const string SelectionGet = "selection_get";
         public const string SelectionSet = "selection_set";
         public const string DialogListEvents = "dialog_list_events";
@@ -71,7 +72,7 @@ namespace RevitAgent.Contracts.Bridge
             ModelListCategories, ModelQueryElements, ModelGetElement, ModelListViews, ModelGetWarnings,
             ScheduleListSchedulableCategories, ScheduleRead, ScheduleCreate,
             RibbonListItems, CommandListPostable, CommandPost,
-            ViewActivate, SelectionGet, SelectionSet, DialogListEvents,
+            ViewActivate, ViewExportImage, SelectionGet, SelectionSet, DialogListEvents,
         };
     }
 }

@@ -1,6 +1,6 @@
 # RevitAgent tool catalog
 
-66 tools; 18 are in the `core` profile (column **Core**, the default for the Shim). Regenerate with `RevitAgent.E2E catalog` (uses `--profile full`); the table below was rebuilt by hand from the tool definitions in `src/RevitAgent.Core`, so re-run the generator to be sure it is current.
+67 tools; 18 are in the `core` profile (column **Core**, the default for the Shim). Regenerate with `RevitAgent.E2E catalog` (uses `--profile full`); the table below was rebuilt by hand from the tool definitions in `src/RevitAgent.Core`, so re-run the generator to be sure it is current.
 
 Permission: Read (observe only) | Interact (UI / commands) | Write (changes the model or files in the sandbox) | Admin (processes, install). `*` = required parameter. Every Bridge tool (`doc_*`, `model_*`, `schedule_*`, `ribbon_*`, `command_*`, `view_*`, `selection_*`, `dialog_*`) needs the Bridge loaded in the target Revit and a `pid`. Tools outside `core` still run when a macro or scenario calls them; list them to the model with `--profile full`.
 
@@ -14,10 +14,10 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 
 | Tool | Core | Permission | Parameters | Description |
 |---|---|---|---|---|
-| `bridge_install` |  | Admin | `years` | Install or update the Bridge add-in for the given Revit years (default: all installed); pre-trusts it so Revit shows no unsigned prompt. A running Revit needs a restart. |
+| `bridge_install` |  | Admin | `years` | Install or update the Bridge add-in for the given Revit years (default: all installed); pre-trusts it so Revit shows no unsigned prompt. A running Revit needs a restart. Needs the owner's approval (dashboard or Telegram), else PERMISSION_DENIED. |
 | `bridge_list_installs` |  | Read | — | Show the Bridge installation per installed Revit year: manifest, assembly, trust, up_to_date, running pids with bridge_loaded. |
 | `bridge_status` |  | Read | `pid` | Check the Bridge in one Revit (or all): pipe_present, reachable, versions, busy tool. Answers even while Revit is busy. |
-| `bridge_uninstall` |  | Admin | `years` | Remove the Bridge manifest, trust value and unlocked copies for the given years (default: all). Other add-ins are never touched. |
+| `bridge_uninstall` |  | Admin | `years` | Remove the Bridge manifest, trust value and unlocked copies for the given years (default: all). Other add-ins are never touched. Needs the owner's approval (dashboard or Telegram), else PERMISSION_DENIED. |
 
 ## `command_*`
 
@@ -115,7 +115,7 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 | Tool | Core | Permission | Parameters | Description |
 |---|---|---|---|---|
 | `runs_get` |  | Read | `run_id`* | Full metadata (`run.json`) and file list of one run. |
-| `runs_list` |  | Read | `suite`, `verdict`, `from`, `to`, `limit` | List runs (newest first) from the run store; filter by suite, verdict, date. |
+| `runs_list` |  | Read | `scenario`, `verdict`, `from`, `to`, `limit` | List runs (newest first) from the run store; filter by scenario, verdict, date. |
 
 ## `sandbox_*`
 
@@ -160,8 +160,8 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 | `ui_keys` |  | Interact | `pid`, `window`, `hwnd`, `ref`, `selector`, `keys`* | Send a SendKeys sequence to a window brought to the foreground. Alt+F4 on a main window is refused. |
 | `ui_list_windows` |  | Read | `pid`, `title`, `include_untitled`, `limit` | List visible top-level windows (hwnd, title, pid, owner, is_modal_dialog); `pid` shows one process incl. add-in dialogs. |
 | `ui_read_table` |  | Read | `pid`, `window`, `hwnd`, `ref`, `selector`, `limit` | Read a grid / table / list as headers + rows of cell text. |
-| `ui_run_script` |  | Interact | `pid`*, `script_path`, `script`, `out_dir`, `vars`, `screenshots`, `validate_only`, `timeout_s` | Run a JSON UI script against one process; returns status PASSED \| FAILED \| BLOCKED, counts, `failed_steps`, per-step results, report paths. |
-| `ui_screenshot` | yes | Read | `pid`, `window`, `hwnd`, `ref`, `selector`, `save_path`, `max_width`, `from_screen`, `include_image` | PNG of a window or element scaled to `max_width`; returns {path, scale}. |
+| `ui_run_script` |  | Interact | `pid`*, `script_path`, `script`, `out_dir`, `vars`, `screenshots`, `validate_only`, `timeout_s` | Run a JSON UI script (steps = `ui_*` tool calls) against one process; returns status passed \| failed \| blocked, counts, `failed_steps`, per-step results, report paths. |
+| `ui_screenshot` | yes | Read | `pid`, `window`, `hwnd`, `ref`, `selector`, `save_path`, `max_width`, `include_image` | PNG of a window or element scaled to `max_width`; returns {path, scale, method, captured_window}. `method` is `print_window`, `revit_api` (Revit canvas printed black: the Bridge renders the active model view) or `screen` (the window rectangle only, after checking nothing covers it); otherwise `TARGET_NOT_READY` with the reason. |
 | `ui_scroll` |  | Interact | `pid`, `window`, `hwnd`, `ref`, `selector`, `timeout_s`, `direction`, `amount` | Scroll a list / grid / pane, or scroll an item into view. |
 | `ui_select` |  | Interact | `pid`, `window`, `hwnd`, `ref`, `selector`, `timeout_s`, `item`, `index` | Select an item in a combo / list / tab / tree (by `item` or `index`), or the target itself. |
 | `ui_snapshot` | yes | Read | `pid`, `window`, `hwnd`, `ref`, `selector`, `interactive_only`, `max_depth`, `max_nodes`, `bounds`, `include_offscreen`, `raw` | UI Automation tree of a window (or subtree) as text, one element per line with a `ref`. |
@@ -174,3 +174,4 @@ Permission: Read (observe only) | Interact (UI / commands) | Write (changes the 
 | Tool | Core | Permission | Parameters | Description |
 |---|---|---|---|---|
 | `view_activate` | yes | Interact | `pid`*, `document`, `view_id`, `name`, `type` | Make a view of the active document the active view (`view_id`, or exact `name` + `type`). |
+| `view_export_image` |  | Read | `pid`*, `document`, `view_id`, `name`, `pixel_width`, `save_path` | Render a view (default: the active one) to PNG with the Revit API. Works when Revit is covered, minimized, locked or RDP-disconnected. Returns {path, width, height, view_id, view_name, document}; saved under captures or `save_path` inside captures/runs (else `SANDBOX_VIOLATION`). Not in the `core` profile. |

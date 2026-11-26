@@ -12,8 +12,6 @@ public sealed class ScenarioLibraryItem
     /// <summary>The scenario's <c>name</c> from scenario.yaml (the folder name is <see cref="Name"/>).</summary>
     public required string ScenarioName { get; init; }
 
-    /// <summary>Alias of <see cref="ScenarioName"/> kept for existing UI bindings.</summary>
-    public string Suite => ScenarioName;
 
     public int? RevitVersion { get; init; }
 

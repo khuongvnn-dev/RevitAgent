@@ -6,18 +6,17 @@ namespace RevitAgent.Core.Scenario;
 
 /// <summary>
 /// Lint of a UI step script (the UI script JSON of docs/agent-guide/ui-automation.md):
-/// known <c>do</c> commands only; no <c>launch</c>/<c>run</c> (the runner owns Revit, no nested files); <c>close</c> and Alt+F4
-/// need an explicit <c>window</c>; never type into password/token fields; dialog rules must never auto-answer
+/// known <c>action</c> names only (the ui_* tool names without the prefix, plus attach and pause); no <c>launch</c>/<c>run</c>/<c>close</c>
+/// (the runner owns Revit, no nested files); Alt+F4 needs an explicit <c>window</c>; never type into password/token fields; dialog rules must never auto-answer
 /// security / unsigned / license / recovery / delete / overwrite / replace dialogs. RevitAgent adds: a step acting inside a
 /// window titled like a security/license/recovery dialog is an error (delete/overwrite titles: warning, add-in windows may be named so).
 /// </summary>
 public static class UiScriptLint
 {
-    public static readonly IReadOnlySet<string> KnownCommands = new HashSet<string>(StringComparer.Ordinal)
+    public static readonly IReadOnlySet<string> KnownActions = new HashSet<string>(StringComparer.Ordinal)
     {
-        "windows", "use", "snapshot", "find", "inspect", "text", "point", "screenshot", "click", "dblclick", "rightclick",
-        "hover", "type", "keys", "focus", "toggle", "expand", "collapse", "select", "scroll", "drag", "close", "wait", "expect",
-        "table", "dialogs", "sleep", "launch", "run",
+        "list_windows", "attach", "snapshot", "find", "inspect", "screenshot", "click", "type", "select", "toggle", "expand",
+        "keys", "scroll", "wait", "expect", "read_table", "pause",
     };
 
     /// <summary>Dialog title fragments that must never be answered automatically (English and Vietnamese Revit UI strings).</summary>
@@ -28,7 +27,7 @@ public static class UiScriptLint
     };
 
     private static readonly string[] HardForbiddenTitles = { "security", "unsigned", "bảo mật", "bao mat", "licens", "licenc", "recover", "khôi phục", "khoi phuc" };
-    private static readonly HashSet<string> Acting = new(StringComparer.Ordinal) { "click", "dblclick", "rightclick", "keys", "type", "select", "toggle", "close", "expand" };
+    private static readonly HashSet<string> Acting = new(StringComparer.Ordinal) { "click", "keys", "type", "select", "toggle", "expand" };
 
     public static List<ScenarioIssue> Lint(string scriptPath, string displayName)
     {
@@ -57,11 +56,6 @@ public static class UiScriptLint
             return issues;
         }
 
-        if (Str(spec, "window") is { Length: > 0 } w0)
-        {
-            issues.Add(ScenarioIssue.Warning("ui-window", $"Top-level window '{w0}': leave it empty so the script starts on the run's Revit main window.", displayName));
-        }
-
         if (Str(spec, "screenshots") is { Length: > 0 } shots && shots.ToLowerInvariant() is not ("fail" or "each" or "none"))
         {
             issues.Add(ScenarioIssue.Error("ui-screenshots", $"screenshots '{shots}' must be fail | each | none.", displayName));
@@ -72,39 +66,29 @@ public static class UiScriptLint
         {
             n++;
             var at = $"steps[{n}]";
-            var cmd = (Str(st, "do") ?? string.Empty).ToLowerInvariant();
+            var cmd = (Str(st, "action") ?? string.Empty).ToLowerInvariant();
             var window = Str(st, "window") ?? string.Empty;
             if (cmd.Length == 0)
             {
-                issues.Add(ScenarioIssue.Error("ui-do", $"{at} has no \"do\".", displayName));
+                issues.Add(ScenarioIssue.Error("ui-action", $"{at} has no \"action\".", displayName));
                 continue;
             }
 
-            if (Str(st, "role") is { Length: > 0 } role && role is not ("nav" or "check"))
+            if (cmd is "launch" or "run" or "close")
             {
-                issues.Add(ScenarioIssue.Error("ui-role", $"{at} role '{role}' must be nav | check.", displayName));
-            }
-
-            if (!KnownCommands.Contains(cmd))
-            {
-                issues.Add(ScenarioIssue.Error("ui-do", $"{at} do '{cmd}' is not a UI script command (see docs/agent-guide/ui-automation.md).", displayName));
+                issues.Add(ScenarioIssue.Error("ui-forbidden", $"{at} action '{cmd}' is forbidden in a scenario UI step: the runner starts/stops Revit, scripts are not nested, and windows are closed through their own buttons.", displayName));
                 continue;
             }
 
-            if (cmd is "launch" or "run")
+            if (!KnownActions.Contains(cmd))
             {
-                issues.Add(ScenarioIssue.Error("ui-forbidden", $"{at} do '{cmd}' is forbidden in a scenario UI step: the runner starts/stops Revit (no launch) and scripts are not nested (no run).", displayName));
+                issues.Add(ScenarioIssue.Error("ui-action", $"{at} action '{cmd}' is not a UI script action (see docs/agent-guide/ui-automation.md).", displayName));
                 continue;
-            }
-
-            if (cmd == "close" && window.Length == 0)
-            {
-                issues.Add(ScenarioIssue.Error("ui-forbidden", $"{at} close without \"window\" would close Revit's main window — set window to the dialog title.", displayName));
             }
 
             if (cmd == "keys")
             {
-                var k = Str(st, "text") ?? Str(st, "target") ?? string.Empty;
+                var k = Str(st, "keys") ?? string.Empty;
                 if (k.Contains("%{F4}", StringComparison.OrdinalIgnoreCase) && window.Length == 0)
                 {
                     issues.Add(ScenarioIssue.Error("ui-forbidden", $"{at} Alt+F4 without \"window\" would close Revit.", displayName));
@@ -118,7 +102,7 @@ public static class UiScriptLint
 
             if (cmd == "type")
             {
-                var t = (Str(st, "target") ?? string.Empty) + " " + (Str(st, "name") ?? string.Empty);
+                var t = (Str(st, "selector") ?? Str(st, "ref") ?? string.Empty) + " " + (Str(st, "name") ?? string.Empty);
                 if (Regex.IsMatch(t, @"(?i)pass(word)?|m[aậ]t ?kh[aẩ]u|token|secret"))
                 {
                     issues.Add(ScenarioIssue.Error("ui-secret", $"{at} types into '{t.Trim()}': never type passwords/secrets in a UI step.", displayName));

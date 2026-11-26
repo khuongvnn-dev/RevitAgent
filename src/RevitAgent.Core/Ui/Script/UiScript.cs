@@ -6,9 +6,9 @@ using RevitAgent.Core.Tools;
 namespace RevitAgent.Core.Ui.Script;
 
 /// <summary>
-/// A UI script: <c>{ name, timeout, screenshots, continueOnError, vars, dialogs,
-/// window, steps: [ { do, target, window, text, is, match, count, exact, keyboard, verify, out, timeout, name, role,
-/// continueOnError, ... } ] }</c>. Property names are case-insensitive.
+/// A UI script: <c>{ name, timeout, screenshots, vars, dialogs, steps: [ { action, name, optional, window, ref | selector,
+/// timeout_s, ...the arguments of the matching ui_* tool } ] }</c>. <c>action</c> is a ui_* tool name without the prefix
+/// (plus <c>attach</c> and <c>pause</c>). Property names are case-insensitive.
 /// </summary>
 public sealed class UiScript
 {
@@ -35,10 +35,6 @@ public sealed class UiScript
     public int TimeoutSeconds => Int(Root, "timeout") is { } t && t > 0 ? t : 10;
 
     public string Screenshots => (Str(Root, "screenshots") ?? "fail").ToLowerInvariant();
-
-    public bool ContinueOnError => Bool(Root, "continueOnError");
-
-    public string? Window => Str(Root, "window");
 
     public JsonElement? Dialogs => Get(Root, "dialogs");
 
@@ -144,7 +140,11 @@ public sealed class UiScriptStep
 
     public int Number { get; }
 
-    public string Do => (UiScript.Str(Json, "do") ?? string.Empty).Trim().ToLowerInvariant();
+    /// <summary>The step action: a ui_* tool name without the prefix, <c>attach</c> or <c>pause</c>.</summary>
+    public string Action => (UiScript.Str(Json, "action") ?? string.Empty).Trim().ToLowerInvariant();
+
+    /// <summary>An optional step may fail (or be refused) without failing the run; the result is still recorded.</summary>
+    public bool Optional => Flag("optional");
 
     public bool Has(string name) => UiScript.Get(Json, name) is not null;
 
@@ -154,7 +154,7 @@ public sealed class UiScriptStep
 
     public int? Int(string name) => UiScript.Int(Json, name);
 
-    /// <summary>Label of a step: the step name, else "do target -Window w -Text 't' -Is x -Count n".</summary>
+    /// <summary>Label of a step: its name, else "action target [window 'w']".</summary>
     public string Label
     {
         get
@@ -164,30 +164,28 @@ public sealed class UiScriptStep
                 return n;
             }
 
-            var parts = new List<string> { Do };
-            if (Raw("target") is { Length: > 0 } t)
+            var parts = new List<string> { Action };
+            if ((Raw("selector") ?? Raw("ref")) is { Length: > 0 } t)
             {
                 parts.Add(t);
             }
 
             if (Raw("window") is { Length: > 0 } w)
             {
-                parts.Add("-Window " + w);
+                parts.Add($"window '{w}'");
             }
 
-            if (Has("text"))
+            foreach (var k in new[] { "text", "item", "keys", "state", "is" })
             {
-                parts.Add($"-Text '{Raw("text")}'");
-            }
-
-            if (Raw("is") is { Length: > 0 } i)
-            {
-                parts.Add("-Is " + i);
+                if (Raw(k) is { Length: > 0 } v)
+                {
+                    parts.Add($"{k}='{v}'");
+                }
             }
 
             if (Has("count"))
             {
-                parts.Add("-Count " + Raw("count"));
+                parts.Add("count=" + Raw("count"));
             }
 
             return string.Join(" ", parts);

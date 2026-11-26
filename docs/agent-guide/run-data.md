@@ -14,7 +14,7 @@ Every scenario run (through `scenario_run` or the dashboard) and every sandbox r
 <root>\
   index.jsonl                                   one line per run (append-only)
   <yyyy-MM>\<yyyy-MM-dd>\<HHmmss>_<scenario-slug>_<id6>\
-    run.json        id, scenario name (key "suite"), trigger (manual|schedule|agent|cli), machine, user,
+    run.json        id, scenario name (key `scenario`), trigger (manual|schedule|agent|cli), machine, user,
                     revit {year, build, pid}, addins [{name, path, sha256}], gateway version,
                     scenario sha256, started_at, ended_at, verdict, counts
     scenario\       frozen copy of scenario.yaml, the ui\*.json scripts and dataset files
@@ -40,7 +40,7 @@ Every scenario run (through `scenario_run` or the dashboard) and every sandbox r
 3. **`run.json`**
    - Identity and full outcome of the run:
      - `id`: run id (same as the folder name).
-     - `suite`: the scenario name (the key keeps its original spelling), or the run name for sandbox runs.
+     - `scenario`: the scenario name, or the run name for sandbox runs. Records written by older versions use the key `suite`; readers accept it as a fallback.
      - `trigger`: `manual`, `schedule`, `agent` or `cli`.
      - `machine`, `user`: computer and OS user.
      - `revit`: `year`, `build`, `pid`.
@@ -77,7 +77,7 @@ Every scenario run (through `scenario_run` or the dashboard) and every sandbox r
 ## 3. MCP tools
 
 - **`runs_list`** (Read): recent runs (newest first) from `index.jsonl` plus a scan of folders not yet indexed (covers crashes and runs in progress).
-  - Filters: `suite` (name substring), `verdict` (`PASS`, `FAIL`, `SUSPECT`, `ERROR`), `from`, `to` (ISO-8601 range), `limit` (default 50).
+  - Filters: `scenario` (name substring), `verdict` (`PASS`, `FAIL`, `SUSPECT`, `ERROR`), `from`, `to` (ISO-8601 range), `limit` (default 50).
 - **`runs_get`** (Read): the full `run.json` and a list of every file in the folder with its size in bytes (`path`, `size`).
 - **`scenario_list_runs`** (Read): the scenario-oriented view over the same store (filter `scenario`).
 

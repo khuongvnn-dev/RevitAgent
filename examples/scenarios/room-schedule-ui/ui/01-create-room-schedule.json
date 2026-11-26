@@ -8,20 +8,20 @@
     "The Add button and the Available fields list: check the real selectors; Revit may need a field selected and then the Add button, or a double-click on the field."
   ],
   "steps": [
-    { "name": "Open the View tab", "do": "click", "target": "id=View" },
-    { "name": "Open the Schedules dropdown", "do": "click", "target": "name=Schedules;type=Button" },
-    { "name": "Choose Schedule/Quantities", "do": "click", "target": "name=Schedule/Quantities;type=MenuItem" },
-    { "name": "Wait for the New Schedule dialog", "do": "wait", "window": "New Schedule", "timeout": 15 },
-    { "name": "Choose the Rooms category", "do": "select", "window": "New Schedule", "target": "name=Rooms;type=ListItem" },
-    { "name": "Confirm the New Schedule dialog", "do": "click", "window": "New Schedule", "target": "name=OK;type=Button" },
-    { "name": "Wait for the Schedule Properties dialog", "do": "wait", "window": "Schedule Properties", "timeout": 15 },
-    { "name": "Select the Name field", "do": "select", "window": "Schedule Properties", "target": "name=Name;type=ListItem" },
-    { "name": "Add the Name field", "do": "click", "window": "Schedule Properties", "target": "name=Add parameter(s);type=Button" },
-    { "name": "Select the Number field", "do": "select", "window": "Schedule Properties", "target": "name=Number;type=ListItem" },
-    { "name": "Add the Number field", "do": "click", "window": "Schedule Properties", "target": "name=Add parameter(s);type=Button" },
-    { "name": "Select the Area field", "do": "select", "window": "Schedule Properties", "target": "name=Area;type=ListItem" },
-    { "name": "Add the Area field", "do": "click", "window": "Schedule Properties", "target": "name=Add parameter(s);type=Button" },
-    { "name": "Confirm the Schedule Properties dialog", "do": "click", "window": "Schedule Properties", "target": "name=OK;type=Button" },
-    { "name": "The Schedule Properties dialog is closed", "do": "expect", "window": "Schedule Properties", "is": "gone" }
+    { "name": "Open the View tab", "action": "click", "selector": "id=View" },
+    { "name": "Open the Schedules dropdown", "action": "click", "selector": "name=Schedules;type=Button" },
+    { "name": "Choose Schedule/Quantities", "action": "click", "selector": "name=Schedule/Quantities;type=MenuItem" },
+    { "name": "Wait for the New Schedule dialog", "action": "wait", "window": "New Schedule", "timeout_s": 15 },
+    { "name": "Choose the Rooms category", "action": "select", "window": "New Schedule", "selector": "name=Rooms;type=ListItem" },
+    { "name": "Confirm the New Schedule dialog", "action": "click", "window": "New Schedule", "selector": "name=OK;type=Button" },
+    { "name": "Wait for the Schedule Properties dialog", "action": "wait", "window": "Schedule Properties", "timeout_s": 15 },
+    { "name": "Select the Name field", "action": "select", "window": "Schedule Properties", "selector": "name=Name;type=ListItem" },
+    { "name": "Add the Name field", "action": "click", "window": "Schedule Properties", "selector": "name=Add parameter(s);type=Button" },
+    { "name": "Select the Number field", "action": "select", "window": "Schedule Properties", "selector": "name=Number;type=ListItem" },
+    { "name": "Add the Number field", "action": "click", "window": "Schedule Properties", "selector": "name=Add parameter(s);type=Button" },
+    { "name": "Select the Area field", "action": "select", "window": "Schedule Properties", "selector": "name=Area;type=ListItem" },
+    { "name": "Add the Area field", "action": "click", "window": "Schedule Properties", "selector": "name=Add parameter(s);type=Button" },
+    { "name": "Confirm the Schedule Properties dialog", "action": "click", "window": "Schedule Properties", "selector": "name=OK;type=Button" },
+    { "name": "The Schedule Properties dialog is closed", "action": "expect", "window": "Schedule Properties", "is": "gone" }
   ]
 }

@@ -1091,7 +1091,7 @@ public sealed class ScenarioRunner
         }
     }
 
-    /// <summary>ui_run_script outcome → SUCCEEDED / FAILED / BLOCKED, plus ENV/INPUT when the script could not run at all.</summary>
+    /// <summary>ui_run_script verdict (passed / failed / blocked) → scenario step status, plus ENV/INPUT when the script could not run at all.</summary>
     public static (string Status, string? AbortClass) InterpretUi(ToolResult r)
     {
         if (r.IsError)
@@ -1660,7 +1660,7 @@ public sealed class ScenarioRunner
                 node = new JsonObject
                 {
                     ["id"] = ctx.RunId,
-                    ["suite"] = ctx.Scenario.Name, // run.json key read by the run store (its schema still says "suite")
+                    ["scenario"] = ctx.Scenario.Name,
                     ["trigger"] = "manual",
                     ["machine"] = Environment.MachineName,
                     ["user"] = Environment.UserName,

@@ -177,25 +177,25 @@ public class ScenarioValidatorTests
                 """ + "\n" + GoodChecks.Replace("levels", "bad-ui")),
             ("ui/bad.json", """
                 { "dialogs": "rules.json", "steps": [
-                  { "do": "launch", "target": "Revit.exe" },
-                  { "do": "run", "target": "other.json" },
-                  { "do": "close" },
-                  { "do": "keys", "text": "%{F4}" },
-                  { "do": "type", "target": "id=txtPassword", "text": "x" },
-                  { "do": "click", "window": "Security - Unsigned Add-In", "target": "name=Always Load" },
-                  { "do": "frobnicate" },
-                  { "do": "keys", "text": "^s" }
+                  { "action": "launch", "selector": "Revit.exe" },
+                  { "action": "run", "selector": "other.json" },
+                  { "action": "close" },
+                  { "action": "keys", "keys": "%{F4}" },
+                  { "action": "type", "selector": "id=txtPassword", "text": "x" },
+                  { "action": "click", "window": "Security - Unsigned Add-In", "selector": "name=Always Load" },
+                  { "action": "frobnicate" },
+                  { "action": "keys", "keys": "^s" }
                 ] }
                 """),
             ("ui/rules.json", """[ { "name": "auto-recover", "title": "File Recovery", "click": "id=1" } ]"""),
-            ("ui/ok.json", """{ "steps": [ { "do": "click", "target": "id=ID_VIEW" } ] }"""));
+            ("ui/ok.json", """{ "steps": [ { "action": "click", "selector": "id=ID_VIEW" } ] }"""));
         var v = ScenarioValidator.Validate(dir, host.Registry);
         var errs = v.Errors.ToArray();
         Assert.Equal(4, errs.Count(e => e.Code == "ui-forbidden"));
         Assert.Contains(errs, e => e.Code == "ui-secret");
         Assert.Contains(errs, e => e.Code == "ui-forbidden-dialog");
         Assert.Contains(errs, e => e.Code == "ui-dialog-rule");
-        Assert.Contains(errs, e => e.Code == "ui-do");
+        Assert.Contains(errs, e => e.Code == "ui-action");
         Assert.Contains(errs, e => e.Code == "ui-missing");
         Assert.Contains(errs, e => e.Code == "ui-setup");
         Assert.Contains(v.Warnings, w => w.Code == "ui-save");

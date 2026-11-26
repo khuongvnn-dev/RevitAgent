@@ -316,6 +316,12 @@
     <sys:String x:Key="Str_GrantUntilOff">Until turned off</sys:String>
     <sys:String x:Key="Str_GrantRemainingFmt">{0} left</sys:String>
     <sys:String x:Key="Str_BtnGrantAction">Allow AI</sys:String>
+    <sys:String x:Key="Str_CardOwnerApproval">Approval requests</sys:String>
+    <sys:String x:Key="Str_ApprovalInstallFmt">{0} asks to install the RevitAgent Bridge for Revit {1}.</sys:String>
+    <sys:String x:Key="Str_ApprovalUninstallFmt">{0} asks to UNINSTALL the RevitAgent Bridge for Revit {1}.</sys:String>
+    <sys:String x:Key="Str_NoteOwnerApproval">Changes the shared Revit add-ins folder of this PC. No answer within 5 minutes = denied.</sys:String>
+    <sys:String x:Key="Str_BtnApprove">Approve</sys:String>
+    <sys:String x:Key="Str_BtnDeny">Deny</sys:String>
     <sys:String x:Key="Str_BtnRevokeGrant">Revoke</sys:String>
 
     <!-- Telegram Channel -->
@@ -339,14 +345,14 @@
     <sys:String x:Key="Str_CardRunHistory">Run History</sys:String>
     <sys:String x:Key="Str_BtnOpenReport">Open Report</sys:String>
     <sys:String x:Key="Str_BtnOpenFolder">Open Folder</sys:String>
-    <sys:String x:Key="Str_FilterSuite">Filter by suite or id...</sys:String>
+    <sys:String x:Key="Str_FilterScenario">Filter by scenario or id...</sys:String>
     <sys:String x:Key="Str_FilterVerdict">Verdict</sys:String>
     <sys:String x:Key="Str_SecRunStore">RUN DATA STORE</sys:String>
     <sys:String x:Key="Str_LblRunStoreRoot">Run data directory:</sys:String>
     <sys:String x:Key="Str_BtnBrowse">Browse...</sys:String>
     <sys:String x:Key="Str_TxtNoRuns">No run data available.</sys:String>
     <sys:String x:Key="Str_ColRunId">Run ID</sys:String>
-    <sys:String x:Key="Str_ColSuite">Suite</sys:String>
+    <sys:String x:Key="Str_ColScenario">Scenario</sys:String>
     <sys:String x:Key="Str_ColTrigger">Trigger</sys:String>
     <sys:String x:Key="Str_ColStarted">Started</sys:String>
     <sys:String x:Key="Str_ColDuration">Duration</sys:String>
@@ -359,7 +365,7 @@
     <sys:String x:Key="Str_ScenarioLibraryFolder">Folder:</sys:String>
     <sys:String x:Key="Str_BtnSelectAll">Select All</sys:String>
     <sys:String x:Key="Str_BtnSelectNone">Deselect All</sys:String>
-    <sys:String x:Key="Str_ColScenarioName">Scenario / Suite Name</sys:String>
+    <sys:String x:Key="Str_ColScenarioName">Scenario Name</sys:String>
     <sys:String x:Key="Str_ColRevitVer">Revit</sys:String>
     <sys:String x:Key="Str_ColLastVerdict">Last Verdict</sys:String>
     <sys:String x:Key="Str_ColLastRunTime">Last Run Time</sys:String>

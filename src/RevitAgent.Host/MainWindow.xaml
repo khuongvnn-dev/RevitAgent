@@ -897,6 +897,28 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- Card 1a: owner approval requests from agents (Bridge install / uninstall), non-modal -->
+                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushTextHeaderAccent}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12"
+                                        Visibility="{Binding Dashboard.Approvals.HasPending, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource Str_CardOwnerApproval}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{DynamicResource Str_NoteOwnerApproval}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" Margin="0,0,0,6"/>
+                                        <ItemsControl ItemsSource="{Binding Dashboard.Approvals.Rows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="0,0,0,8">
+                                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextPrimary}" FontSize="11" Margin="0,0,0,4"/>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Button Style="{StaticResource PrimaryButton}" Padding="8,4" Margin="0,0,6,0" Content="{DynamicResource Str_BtnApprove}" Command="{Binding ApproveCommand}"/>
+                                                            <Button Style="{StaticResource DangerButton}" Padding="8,4" Content="{DynamicResource Str_BtnDeny}" Command="{Binding DenyCommand}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Card 1b: let AI act on the owner's own Revit (time-limited, Host memory only) -->
                                 <TextBlock Text="{DynamicResource Str_CardActionGrant}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextHeaderAccent}" Margin="0,4,0,8"/>
                                 <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12">

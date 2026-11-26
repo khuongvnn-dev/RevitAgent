@@ -26,7 +26,7 @@ internal sealed class EvidenceRun
     /// <summary>Run folder (null when --evidence was given explicitly).</summary>
     public string? RunDir { get; }
 
-    public static EvidenceRun Create(string? explicitDir, string suite, string purpose)
+    public static EvidenceRun Create(string? explicitDir, string scenario, string purpose)
     {
         if (!string.IsNullOrWhiteSpace(explicitDir))
         {
@@ -35,7 +35,7 @@ internal sealed class EvidenceRun
         }
 
         var store = new RunStore(new AgentPaths(), new GatewayPolicy());
-        var run = store.CreateRun(suite, trigger: "cli", purpose: purpose);
+        var run = store.CreateRun(scenario, trigger: "cli", purpose: purpose);
         Console.WriteLine($"run folder: {run.FolderPath}");
         return new EvidenceRun(run.EvidenceDir, run.FolderPath, store);
     }

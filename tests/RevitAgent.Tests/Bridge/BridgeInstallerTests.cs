@@ -66,6 +66,16 @@ public class BridgeInstallerTests
             new(year, Path.Combine(Root, "Revit " + year), Path.Combine(Root, "Revit " + year, "Revit.exe"), year + ".0", null, Path.Combine(Addins, year.ToString()), Path.Combine(Root, "ProgramData", year.ToString()));
     }
 
+    private sealed class AlwaysApprove : RevitAgent.Core.Policy.IOwnerApprovalChannel
+    {
+        public string Name => "test";
+
+        public bool IsAvailable => true;
+
+        public Task<RevitAgent.Core.Policy.OwnerDecision> AskAsync(RevitAgent.Core.Policy.OwnerApprovalRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(RevitAgent.Core.Policy.OwnerDecision.Approve("test", "test owner"));
+    }
+
     private static Dictionary<string, object?> R(object o) => Assert.IsType<Dictionary<string, object?>>(o);
 
     [Fact]
@@ -268,7 +278,7 @@ public class BridgeInstallerTests
     public async Task InstallTools_ThroughTheRegistry_UseTheInjectedEnvironment()
     {
         var s = new Sandbox();
-        await using var sp = BridgeGatewayToolsTests.BuildGateway(out _, installEnv: s.Environment());
+        await using var sp = BridgeGatewayToolsTests.BuildGateway(out _, installEnv: s.Environment(), configure: svc => svc.AddSingleton<RevitAgent.Core.Policy.IOwnerApprovalChannel>(new AlwaysApprove()));
         var registry = sp.GetRequiredService<ToolRegistry>();
 
         var install = await registry.InvokeAsync("bridge_install", JsonSerializer.SerializeToElement(new { years = new[] { 2024 } }), "t", CancellationToken.None);

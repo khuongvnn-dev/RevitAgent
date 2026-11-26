@@ -19,7 +19,7 @@ public partial class RunHistoryViewModel : ObservableObject
     private readonly ILocalizationService? _localizationService;
 
     [ObservableProperty]
-    private string _suiteFilter = string.Empty;
+    private string _scenarioFilter = string.Empty;
 
     [ObservableProperty]
     private string _currentVerdictFilter = "ALL";
@@ -53,7 +53,7 @@ public partial class RunHistoryViewModel : ObservableObject
         Refresh();
     }
 
-    partial void OnSuiteFilterChanged(string value)
+    partial void OnScenarioFilterChanged(string value)
     {
         RunsView.Refresh();
         UpdateCountDisplay();
@@ -83,7 +83,7 @@ public partial class RunHistoryViewModel : ObservableObject
                 Runs.Add(new RunHistoryItem
                 {
                     Id = s.Id,
-                    Suite = s.Suite,
+                    Scenario = s.Scenario,
                     Trigger = s.Trigger,
                     Verdict = s.Verdict,
                     StartedAt = s.StartedAt,
@@ -152,9 +152,9 @@ public partial class RunHistoryViewModel : ObservableObject
     {
         if (obj is not RunHistoryItem item) return false;
 
-        if (!string.IsNullOrWhiteSpace(SuiteFilter) &&
-            !item.Suite.Contains(SuiteFilter, StringComparison.OrdinalIgnoreCase) &&
-            !item.Id.Contains(SuiteFilter, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(ScenarioFilter) &&
+            !item.Scenario.Contains(ScenarioFilter, StringComparison.OrdinalIgnoreCase) &&
+            !item.Id.Contains(ScenarioFilter, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

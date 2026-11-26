@@ -83,7 +83,15 @@ public sealed class McpGatewayServer
                 CallToolHandler = async (ctx, ct) =>
                 {
                     var p = ctx.Params ?? throw new ArgumentException("tools/call without params");
-                    Resolve(ctx.Server);
+                    var effective = Resolve(ctx.Server);
+                    if (_registry.TryGet(p.Name, out _) && !ToolProfiles.Lists(effective, p.Name))
+                    {
+                        // Same behaviour for every client: a tool hidden from tools/list cannot be called by guessing its name.
+                        return ToMcpResult(ToolResult.Error(GatewayException.NotFound(
+                            $"Tool '{p.Name}' is not available in profile '{effective}'. Use macro_list / macro_run, or restart the client with the Shim flag --profile full.",
+                            new { profile = effective, tool = p.Name })));
+                    }
+
                     JsonElement? args = p.Arguments is null ? null : JsonSerializer.SerializeToElement(p.Arguments);
                     var result = await _registry.InvokeAsync(new ToolCall(p.Name, args, sessionId), ct).ConfigureAwait(false);
                     return ToMcpResult(result);

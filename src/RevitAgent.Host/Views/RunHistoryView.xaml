@@ -139,9 +139,9 @@
                     <!-- Search Box & Refresh -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Grid VerticalAlignment="Center" Margin="0,0,8,0">
-                            <TextBox Width="200" Padding="8,4" Text="{Binding SuiteFilter, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock IsHitTestVisible="False" Text="{DynamicResource Str_FilterSuite}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11"
-                                       Visibility="{Binding SuiteFilter, Converter={StaticResource InvertedNullToVisibilityConverter}}"/>
+                            <TextBox Width="200" Padding="8,4" Text="{Binding ScenarioFilter, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock IsHitTestVisible="False" Text="{DynamicResource Str_FilterScenario}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11"
+                                       Visibility="{Binding ScenarioFilter, Converter={StaticResource InvertedNullToVisibilityConverter}}"/>
                         </Grid>
                         <Button Content="🔄" ToolTip="{DynamicResource Str_BtnReloadConfig}" Command="{Binding RefreshCommand}" Padding="8,4"/>
                     </StackPanel>
@@ -188,8 +188,8 @@
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
-                            <!-- Suite Name -->
-                            <GridViewColumn Header="{DynamicResource Str_ColSuite}" Width="160" DisplayMemberBinding="{Binding Suite}"/>
+                            <!-- Scenario Name -->
+                            <GridViewColumn Header="{DynamicResource Str_ColScenario}" Width="160" DisplayMemberBinding="{Binding Scenario}"/>
 
                             <!-- Run ID -->
                             <GridViewColumn Header="{DynamicResource Str_ColRunId}" Width="200" DisplayMemberBinding="{Binding Id}"/>

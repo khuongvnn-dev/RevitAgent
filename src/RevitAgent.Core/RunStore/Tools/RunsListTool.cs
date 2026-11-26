@@ -16,13 +16,13 @@ public sealed class RunsListTool : GatewayTool
     public override string Name => "runs_list";
 
     public override string Description =>
-        "List runs (newest first) from the run data store index and crash-safe folder scan: run id, suite, verdict, trigger, start/end timestamps, folder paths and report links. " +
-        "Supports filtering by suite name (substring), verdict, and date range (from/to). Read-only.";
+        "List runs (newest first) from the run data store index and crash-safe folder scan: run id, scenario, verdict, trigger, start/end timestamps, folder paths and report links. " +
+        "Supports filtering by scenario name (substring), verdict, and date range (from/to). Read-only.";
 
     public override ToolPermission Permission => ToolPermission.Read;
 
     protected override Schema BuildSchema() => Schema.Object()
-        .String("suite", "Only runs whose suite name contains this text (case-insensitive substring).")
+        .String("scenario", "Only runs whose scenario name contains this text (case-insensitive substring).")
         .String("verdict", "Only runs with this verdict (e.g. PASS, FAIL, SUSPECT, ERROR, RUNNING).")
         .String("from", "Only runs started at or after this ISO-8601 date or timestamp (e.g. 2026-11-20 or 2026-11-20T00:00:00Z).")
         .String("to", "Only runs started at or before this ISO-8601 date or timestamp.")
@@ -31,7 +31,7 @@ public sealed class RunsListTool : GatewayTool
     public override Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
     {
         var limit = call.GetLimit(defaultValue: 50, max: 200);
-        var suite = call.GetString("suite");
+        var scenario = call.GetString("scenario");
         var verdict = call.GetString("verdict");
         var fromStr = call.GetString("from");
         var toStr = call.GetString("to");
@@ -58,7 +58,7 @@ public sealed class RunsListTool : GatewayTool
 
         var filter = new RunFilter
         {
-            Suite = suite,
+            Scenario = scenario,
             Verdict = verdict,
             From = from,
             To = to,
@@ -74,7 +74,7 @@ public sealed class RunsListTool : GatewayTool
             runs = runs.Select(r => new
             {
                 id = r.Id,
-                suite = r.Suite,
+                scenario = r.Scenario,
                 trigger = r.Trigger,
                 verdict = r.Verdict,
                 started_at = r.StartedAt.ToString("O", CultureInfo.InvariantCulture),

@@ -150,16 +150,16 @@ public class UiUnitTests
           "timeout": 15,
           "screenshots": "fail",
           "steps": [
-            { "name": "click ribbon button", "do": "click", "target": "id=ID_SHEET_CONFIGURE" },
-            { "do": "wait", "window": "Sheet Configure", "timeout": 30 },
-            { "do": "select", "window": "Sheet Configure", "target": "id=tabViewSplit" },
-            { "do": "type", "target": "id=txtScaleMin", "text": "45", "keyboard": true, "verify": true },
-            { "do": "keys", "text": "{TAB}" },
-            { "do": "expect", "target": "id=txtJsonPreview", "match": "\"ScaleMin\"\\s*:\\s*45" },
-            { "do": "screenshot", "out": "${env:REVITAGENT_UI_OUT}\\settings.png" },
-            { "do": "click", "window": "Sheet Configure", "target": "id=7" },
-            { "do": "expect", "window": "Sheet Configure", "is": "gone" },
-            { "do": "keys", "text": "^s" }
+            { "name": "click ribbon button", "action": "click", "selector": "id=ID_SHEET_CONFIGURE" },
+            { "action": "wait", "window": "Sheet Configure", "timeout_s": 30 },
+            { "action": "select", "window": "Sheet Configure", "selector": "id=tabViewSplit" },
+            { "action": "type", "selector": "id=txtScaleMin", "text": "45", "keyboard": true, "verify": true },
+            { "action": "keys", "keys": "{TAB}" },
+            { "action": "expect", "selector": "id=txtJsonPreview", "match": "\"ScaleMin\"\\s*:\\s*45" },
+            { "action": "screenshot", "save_path": "${env:REVITAGENT_UI_OUT}\\settings.png" },
+            { "action": "click", "window": "Sheet Configure", "selector": "id=7" },
+            { "action": "expect", "window": "Sheet Configure", "is": "gone" },
+            { "action": "keys", "keys": "^s" }
           ]
         }
         """);
@@ -167,23 +167,24 @@ public class UiUnitTests
         Assert.True(v.Ok, string.Join("; ", v.Errors.Select(e => e.Message)));
         Assert.Single(v.Warnings); // Ctrl+S warning
         Assert.Equal(10, s.Steps.Count);
+        Assert.Equal("click", s.Steps[0].Action);
         Assert.Equal(15, s.TimeoutSeconds);
     }
 
     [Theory]
-    [InlineData("""{ "steps": [ { "do": "launch", "target": "Revit.exe" } ] }""", "launch")]
-    [InlineData("""{ "steps": [ { "do": "run", "target": "other.json" } ] }""", "run")]
-    [InlineData("""{ "steps": [ { "do": "close" } ] }""", "close without")]
-    [InlineData("""{ "steps": [ { "do": "keys", "text": "%{F4}" } ] }""", "Alt+F4")]
-    [InlineData("""{ "steps": [ { "do": "type", "target": "id=txtPassword", "text": "x" } ] }""", "password")]
-    [InlineData("""{ "dialogs": [ { "title": "Security - Unsigned Add-In", "click": "id=CommandLink_1001" } ], "steps": [ { "do": "sleep" } ] }""", "security")]
-    [InlineData("""{ "dialogs": [ { "title": "Confirm", "text": "Delete the selected sheets?", "click": "name=Yes" } ], "steps": [ { "do": "sleep" } ] }""", "delete")]
-    [InlineData("""{ "steps": [ { "do": "click", "window": "Security - Unsigned Add-In", "target": "name=\"Always Load\"" } ] }""", "security")]
-    [InlineData("""{ "steps": [ { "do": "click", "window": "Đăng nhập", "target": "id=ok" } ] }""", "sign in")]
-    [InlineData("""{ "dialogs": [ { "title": "Autodesk Revit", "click": "name=\"Yes\"" } ], "steps": [ { "do": "sleep" } ] }""", "generic title")]
-    [InlineData("""{ "dialogs": [ { "title": "Revit 2024", "click": "name=\"Yes\"" } ], "steps": [ { "do": "sleep" } ] }""", "generic title")]
-    [InlineData("""{ "dialogs": [ { "click": "name=\"Yes\"" } ], "steps": [ { "do": "sleep" } ] }""", "no title")]
-    [InlineData("""{ "dialogs": [ { "title": "Ghi đè tệp", "click": "name=Có" } ], "steps": [ { "do": "sleep" } ] }""", "ghi đè")]
+    [InlineData("""{ "steps": [ { "action": "launch", "selector": "Revit.exe" } ] }""", "launch")]
+    [InlineData("""{ "steps": [ { "action": "run", "selector": "other.json" } ] }""", "run")]
+    [InlineData("""{ "steps": [ { "action": "close" } ] }""", "close")]
+    [InlineData("""{ "steps": [ { "action": "keys", "keys": "%{F4}" } ] }""", "Alt+F4")]
+    [InlineData("""{ "steps": [ { "action": "type", "selector": "id=txtPassword", "text": "x" } ] }""", "password")]
+    [InlineData("""{ "dialogs": [ { "title": "Security - Unsigned Add-In", "click": "id=CommandLink_1001" } ], "steps": [ { "action": "pause" } ] }""", "security")]
+    [InlineData("""{ "dialogs": [ { "title": "Confirm", "text": "Delete the selected sheets?", "click": "name=Yes" } ], "steps": [ { "action": "pause" } ] }""", "delete")]
+    [InlineData("""{ "steps": [ { "action": "click", "window": "Security - Unsigned Add-In", "selector": "name=\"Always Load\"" } ] }""", "security")]
+    [InlineData("""{ "steps": [ { "action": "click", "window": "Đăng nhập", "selector": "id=ok" } ] }""", "sign in")]
+    [InlineData("""{ "dialogs": [ { "title": "Autodesk Revit", "click": "name=\"Yes\"" } ], "steps": [ { "action": "pause" } ] }""", "generic title")]
+    [InlineData("""{ "dialogs": [ { "title": "Revit 2024", "click": "name=\"Yes\"" } ], "steps": [ { "action": "pause" } ] }""", "generic title")]
+    [InlineData("""{ "dialogs": [ { "click": "name=\"Yes\"" } ], "steps": [ { "action": "pause" } ] }""", "no title")]
+    [InlineData("""{ "dialogs": [ { "title": "Ghi đè tệp", "click": "name=Có" } ], "steps": [ { "action": "pause" } ] }""", "ghi đè")]
     public void ScriptValidator_RejectsForbiddenContent(string json, string fragment)
     {
         var v = UiScriptValidator.Validate(UiScript.Parse(json));
@@ -195,10 +196,10 @@ public class UiUnitTests
 
     [Theory]
     [InlineData("""{ "steps": [] }""", "no steps")]
-    [InlineData("""{ "steps": [ { "target": "id=x" } ] }""", "no 'do'")]
-    [InlineData("""{ "steps": [ { "do": "clickk" } ] }""", "not a UI script command")]
-    [InlineData("""{ "screenshots": "always", "steps": [ { "do": "sleep" } ] }""", "screenshots")]
-    [InlineData("""{ "steps": [ { "do": "click", "target": "id=a", "role": "other" } ] }""", "role")]
+    [InlineData("""{ "steps": [ { "selector": "id=x" } ] }""", "no 'action'")]
+    [InlineData("""{ "steps": [ { "action": "clickk" } ] }""", "not a UI script action")]
+    [InlineData("""{ "steps": [ { "action": "dblclick", "selector": "id=a" } ] }""", "not a UI script action")]
+    [InlineData("""{ "screenshots": "always", "steps": [ { "action": "pause" } ] }""", "screenshots")]
     public void ScriptValidator_ReportsFormatErrors(string json, string fragment)
     {
         var v = UiScriptValidator.Validate(UiScript.Parse(json));
@@ -214,16 +215,16 @@ public class UiUnitTests
         File.WriteAllText(Path.Combine(dir, "rules.json"), """[ { "name": "Copied Central Model -> Close", "proc": "Revit", "title": "Copied Central Model", "click": "id=CommandButton_8" } ]""");
         File.WriteAllText(Path.Combine(dir, "bad.json"), """{ "rules": [ { "title": "File Recovery", "click": "name=Yes" } ] }""");
         var script = Path.Combine(dir, "s.json");
-        File.WriteAllText(script, """{ "dialogs": "rules.json", "steps": [ { "do": "dialogs", "timeout": 1 } ] }""");
+        File.WriteAllText(script, """{ "dialogs": "rules.json", "steps": [ { "action": "pause", "ms": 1 } ] }""");
         var ok = UiScriptValidator.Validate(UiScript.Load(script));
         Assert.True(ok.Ok);
         Assert.Equal("id=CommandButton_8", Assert.Single(ok.Rules).Click);
 
-        File.WriteAllText(script, """{ "dialogs": "rules.json, bad.json", "steps": [ { "do": "dialogs" } ] }""");
+        File.WriteAllText(script, """{ "dialogs": "rules.json, bad.json", "steps": [ { "action": "pause" } ] }""");
         var bad = UiScriptValidator.Validate(UiScript.Load(script));
         Assert.Contains(bad.Errors, e => e.Forbidden && e.Message.Contains("recover", StringComparison.OrdinalIgnoreCase));
 
-        File.WriteAllText(script, """{ "dialogs": "missing.json", "steps": [ { "do": "dialogs" } ] }""");
+        File.WriteAllText(script, """{ "dialogs": "missing.json", "steps": [ { "action": "pause" } ] }""");
         Assert.Contains(UiScriptValidator.Validate(UiScript.Load(script)).Errors, e => e.Message.Contains("not found"));
     }
 
@@ -267,7 +268,7 @@ public class UiUnitTests
         var args = JsonSerializer.SerializeToElement(new
         {
             pid = Environment.ProcessId,
-            script = new { steps = new object[] { new { @do = "launch", target = "Revit.exe" } } },
+            script = new { steps = new object[] { new { action = "launch", selector = "Revit.exe" } } },
         });
         var r = await registry.InvokeAsync(new ToolCall("ui_run_script", args, "s"), CancellationToken.None);
         Assert.True(r.IsError);
@@ -275,7 +276,7 @@ public class UiUnitTests
         Assert.Contains("launch", ((TextContent)r.Content[0]).Text);
 
         var valid = await registry.InvokeAsync(
-            new ToolCall("ui_run_script", JsonSerializer.SerializeToElement(new { pid = Environment.ProcessId, validate_only = true, script = "{\"steps\":[{\"do\":\"sleep\",\"ms\":1}]}" }), "s"),
+            new ToolCall("ui_run_script", JsonSerializer.SerializeToElement(new { pid = Environment.ProcessId, validate_only = true, script = "{\"steps\":[{\"action\":\"pause\",\"ms\":1}]}" }), "s"),
             CancellationToken.None);
         Assert.False(valid.IsError, ((TextContent)valid.Content[0]).Text);
         Assert.True(valid.Structured!.Value.GetProperty("valid").GetBoolean());

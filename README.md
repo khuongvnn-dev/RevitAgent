@@ -14,7 +14,7 @@ Antigravity, can then observe Revit, act on it like a user, read the model to ve
 - **Safe by default:** models are only opened from a sandbox copy, never saved over; dialogs that need a human are never answered by the AI.
 - **Scenarios and macros:** a scenario is a folder with a `scenario.yaml` run by the gateway; macros are verified recipes exposed through two tools.
 - **Record and replay:** record one AI-solved run, replay it without an AI.
-- **Small tool surface for small models:** 66 tools; the default `core` profile lists 18.
+- **Small tool surface for small models:** 67 tools; the default `core` profile lists 18.
 - **Audited:** every tool call is logged; evidence of a run goes to the run store.
 
 ## How it works
@@ -55,7 +55,7 @@ src\RevitAgent.Host\bin\Debug\net10.0-windows\RevitAgent.Host.exe   # dashboard:
    ```
 
    Setup for Claude Code, Claude Desktop, Cursor, Antigravity (agy), Codex CLI, other MCP clients and open models, and how to choose a profile per model: section 1 of [docs/agent-guide/README.md](docs/agent-guide/README.md).
-3. **Tool profile:** `--profile core|full` (or env `REVITAGENT_PROFILE`; default `core`). `core` lists 18 tools, `full` lists all 66. Tools outside the profile still run when called by name.
+3. **Tool profile:** `--profile core|full` (or env `REVITAGENT_PROFILE`; default `core`). `core` lists 18 tools, `full` lists all 67. A direct call to a tool outside the profile is refused (`NOT_FOUND`); macros and scenarios still use those tools internally.
 4. **Acceptance on a real Revit:** open Revit 2024, then `powershell -ExecutionPolicy Bypass -File scripts\acceptance.ps1`.
 
 ## Tool groups

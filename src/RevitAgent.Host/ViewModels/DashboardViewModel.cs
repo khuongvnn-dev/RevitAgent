@@ -17,6 +17,9 @@ namespace RevitAgent.Host.ViewModels
     using CommunityToolkit.Mvvm.Input;
     using RevitAgent.Contracts.Protocol;
     using RevitAgent.Core;
+    using RevitAgent.Core.Audit;
+    using RevitAgent.Core.Install;
+    using RevitAgent.Core.Policy;
     using RevitAgent.Core.Mcp;
     using RevitAgent.Core.Revit;
     using RevitAgent.Core.Tools;
@@ -46,6 +49,8 @@ namespace RevitAgent.Host.ViewModels
         private readonly IAuditLogService _auditLogService;
         private readonly ILocalizationService _localizationService;
         private readonly INotificationService? _notificationService;
+        private readonly BridgeInstaller? _bridgeInstaller;
+        private readonly AuditLog? _gatewayAudit;
 
         private readonly Func<IReadOnlyList<RevitInstance>> _listInstances;
         private readonly Func<int, bool> _uacParity;
@@ -146,6 +151,9 @@ namespace RevitAgent.Host.ViewModels
         /// <summary>"Let AI act on my Revit": time-limited action grants (Host memory only).</summary>
         public ActionGrantViewModel Grants { get; }
 
+        /// <summary>Owner approval requests (agents asking to install / uninstall the Bridge), null when not wired.</summary>
+        public OwnerApprovalViewModel? Approvals { get; }
+
         public event Action<string>? StatusMessage;
 
         public DashboardViewModel(
@@ -163,7 +171,10 @@ namespace RevitAgent.Host.ViewModels
             Func<IntPtr, byte[]?>? capture = null,
             Action<string>? setClipboard = null,
             string? baseDirectory = null,
-            RevitAgent.Core.Policy.ActionGrantStore? grants = null)
+            RevitAgent.Core.Policy.ActionGrantStore? grants = null,
+            BridgeInstaller? bridgeInstaller = null,
+            AuditLog? gatewayAudit = null,
+            DashboardApprovalChannel? approvalChannel = null)
         {
             _tools = tools ?? throw new ArgumentNullException(nameof(tools));
             _processes = processes ?? throw new ArgumentNullException(nameof(processes));
@@ -175,6 +186,13 @@ namespace RevitAgent.Host.ViewModels
             _localizationService = localizationService ?? new LocalizationService();
             _notificationService = notificationService;
             _baseDirectory = baseDirectory;
+            _bridgeInstaller = bridgeInstaller;
+            _gatewayAudit = gatewayAudit;
+            if (approvalChannel is not null)
+            {
+                Approvals = new OwnerApprovalViewModel(approvalChannel, _localizationService, notificationService);
+            }
+
             Grants = new ActionGrantViewModel(grants ?? new RevitAgent.Core.Policy.ActionGrantStore(), _localizationService);
 
             _listInstances = listInstances ?? (() => _processes.ListInstances());
@@ -466,10 +484,15 @@ namespace RevitAgent.Host.ViewModels
             IsBridgeBusy = true;
             try
             {
-                var result = await CallToolAsync(tool, new { years = new[] { installed.Year } }).ConfigureAwait(true);
-                if (result.IsError)
+                // The owner pressing the button acts directly: no agent session, no approval prompt. The installer is
+                // called here, never through the tool registry (whose bridge tools ask the owner first).
+                var (failure, result) = _bridgeInstaller is { } installer
+                    ? (await Task.Run(() => RunInstallerDirect(installer, tool, installed.Year)).ConfigureAwait(true), (ToolResult?)null)
+                    : (null, await CallToolAsync(tool, new { years = new[] { installed.Year } }).ConfigureAwait(true));
+                failure ??= result is { IsError: true } r ? Describe(r) : null;
+                if (failure is not null)
                 {
-                    Notify(NotificationKind.Error, L("Str_TitleBridge"), L("Str_MsgToolFailed", tool, Describe(result)));
+                    Notify(NotificationKind.Error, L("Str_TitleBridge"), L("Str_MsgToolFailed", tool, failure));
                 }
                 else
                 {
@@ -483,6 +506,40 @@ namespace RevitAgent.Host.ViewModels
             }
 
             await RefreshInstalledAsync().ConfigureAwait(true);
+        }
+
+        /// <summary>Runs the installer for one year on the owner's behalf; returns a failure text or null. Audited as session "dashboard".</summary>
+        private string? RunInstallerDirect(BridgeInstaller installer, string tool, int year)
+        {
+            var sw = Stopwatch.StartNew();
+            string? failure = null;
+            try
+            {
+                var years = new[] { year };
+                var results = tool == BridgeUninstallTool ? installer.Uninstall(years) : installer.Install(years);
+                var bad = results.OfType<Dictionary<string, object?>>().FirstOrDefault(d => d.TryGetValue("ok", out var ok) && ok is not true);
+                if (bad is not null)
+                {
+                    failure = bad.TryGetValue("message", out var m) && m is string text && text.Length > 0 ? text : "failed";
+                }
+            }
+            catch (Exception ex)
+            {
+                failure = ex.Message;
+            }
+
+            _gatewayAudit?.Record(new AuditEntry(
+                DateTimeOffset.Now,
+                Guid.NewGuid().ToString("N")[..12],
+                SessionId,
+                tool,
+                ToolPermission.Admin.ToString(),
+                "{\"years\":[" + year.ToString(CultureInfo.InvariantCulture) + "]}",
+                failure is null,
+                failure is null ? null : "DEPENDENCY_FAILED",
+                (long)sw.Elapsed.TotalMilliseconds,
+                Note: "owner action (dashboard button)"));
+            return failure;
         }
 
         // ---------------------------------------------------------------- launch / close / dialogs / capture

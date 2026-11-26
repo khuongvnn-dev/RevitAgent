@@ -184,18 +184,18 @@ public static class ScenarioExporter
         foreach (var c in calls)
         {
             var cmd = UiCommands[c.Tool];
-            var s = new JsonObject { ["do"] = cmd };
+            var s = new JsonObject { ["action"] = cmd };
             var window = Str(c.Args, "window");
             var (target, todo) = Target(c);
             var needsTarget = cmd is "click" or "type" or "select" or "toggle" or "expand" or "scroll" or "expect";
             if (target is not null)
             {
-                s["target"] = target;
+                s["selector"] = target;
             }
             else if (needsTarget && window is null)
             {
                 todo ??= $"#{c.Seq} {c.Tool}: no selector recorded";
-                s["target"] = "TODO-selector";
+                s["selector"] = "TODO-selector";
             }
 
             if (window is not null)
@@ -203,105 +203,26 @@ public static class ScenarioExporter
                 s["window"] = window;
             }
 
-            switch (cmd)
+            // The script step takes the tool's own arguments: carry over everything except targeting and session fields.
+            foreach (var p in c.Args.EnumerateObject())
             {
-                case "click":
-                    if (Bool(c.Args, "double") || Str(c.Args, "button") == "double")
-                    {
-                        s["do"] = "dblclick";
-                    }
-                    else if (Str(c.Args, "button") == "right")
-                    {
-                        s["do"] = "rightclick";
-                    }
+                var pointClick = cmd == "click" && target is null && p.Name is "x" or "y";
+                if ((p.Name is "pid" or "hwnd" or "ref" or "selector" or "window" or "x" or "y") && !pointClick)
+                {
+                    continue;
+                }
 
-                    if (Bool(c.Args, "mouse"))
-                    {
-                        s["mouse"] = true;
-                    }
+                if (p.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+                {
+                    continue;
+                }
 
-                    break;
-                case "type":
-                    s["text"] = Str(c.Args, "text") ?? Str(c.Args, "value") ?? string.Empty;
-                    foreach (var flag in new[] { "keyboard", "append", "verify" })
-                    {
-                        if (Bool(c.Args, flag))
-                        {
-                            s[flag] = true;
-                        }
-                    }
+                s[p.Name] = JsonNode.Parse(p.Value.GetRawText());
+            }
 
-                    break;
-                case "select":
-                    if ((Str(c.Args, "item") ?? Str(c.Args, "text") ?? Str(c.Args, "value") ?? Str(c.Args, "option")) is { } item)
-                    {
-                        s["text"] = item;
-                    }
-
-                    break;
-                case "keys":
-                    s["text"] = Str(c.Args, "keys") ?? Str(c.Args, "text") ?? string.Empty;
-                    break;
-                case "scroll":
-                    if ((Str(c.Args, "direction") ?? Str(c.Args, "text")) is { } dir)
-                    {
-                        s["text"] = Int(c.Args, "amount") is { } n ? $"{dir} {n}" : dir;
-                    }
-
-                    break;
-                case "wait":
-                case "expect":
-                    if (cmd == "expect")
-                    {
-                        expects++;
-                    }
-
-                    var state = Str(c.Args, "is") ?? Str(c.Args, "state");
-                    if (Bool(c.Args, "gone") || state == "gone")
-                    {
-                        if (cmd == "wait")
-                        {
-                            s["gone"] = true;
-                        }
-                        else
-                        {
-                            s["is"] = "gone";
-                        }
-                    }
-                    else if (state is not null && cmd == "expect")
-                    {
-                        s["is"] = state;
-                    }
-
-                    if (cmd == "expect")
-                    {
-                        if (Str(c.Args, "text") is { } text)
-                        {
-                            s["text"] = text;
-                        }
-
-                        if ((Str(c.Args, "match") ?? Str(c.Args, "regex")) is { } match)
-                        {
-                            s["match"] = match;
-                        }
-
-                        if (Int(c.Args, "count") is { } count)
-                        {
-                            s["count"] = count;
-                        }
-
-                        if (Bool(c.Args, "exact"))
-                        {
-                            s["exact"] = true;
-                        }
-                    }
-
-                    if ((Int(c.Args, "timeout_sec") ?? Int(c.Args, "timeout")) is { } to)
-                    {
-                        s["timeout"] = to;
-                    }
-
-                    break;
+            if (cmd == "expect")
+            {
+                expects++;
             }
 
             if (todo is not null)

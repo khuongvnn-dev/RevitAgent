@@ -88,7 +88,7 @@ same process (modal dialogs!). Snapshot a subtree (`ref`/`selector`) when a wind
 | `ui_find` | Read | Selector → matches with refs. |
 | `ui_inspect` | Read | All properties, supported patterns, values, bounds (screen + window-relative), default action. |
 | `ui_read_table` | Read | Grid/table/list → `headers` + `rows` (GridPattern/TablePattern, else row children; WinForms DataGridView "Top Row"). Virtualized grids return realized rows only. |
-| `ui_screenshot` | Read | PNG of the window or an element, returned scaled to ≤ `max_width` (1600) + `{path, width, height, scale}`; saved under `<home>\captures` or `save_path` inside the gateway captures/runs folders. PrintWindow (covered windows render); `from_screen=true` copies screen pixels. Never activates or restores the window. |
+| `ui_screenshot` | Read | PNG of the window or an element, returned scaled to ≤ `max_width` (1600) + `{path, width, height, scale}`; saved under `<home>\captures` or `save_path` inside the gateway captures/runs folders. Every result has `method` and `captured_window {pid, title}`. See "Screenshot methods" below. Never activates or restores the window. |
 | `ui_wait` | Read | Window appears / gone, element appears / gone / enabled; `TIMEOUT` error with the last state. |
 | `ui_expect` | Read | Retrying assertion → `{pass, message, actual, target}`; `is` (exists, gone, enabled, disabled, visible, hidden, focused, checked, unchecked, mixed, selected, expanded, collapsed), `text` (+`exact`), `match` (regex), `count`. |
 | `ui_click` | Interact | Pattern first: Invoke → Toggle → SelectionItem → ExpandCollapse → default action; then a real mouse click. `button=right`, `double=true`, `mouse=true` force the mouse. `x`,`y` without ref/selector = window-relative pixels (canvas). |
@@ -99,6 +99,15 @@ same process (modal dialogs!). Snapshot a subtree (`ref`/`selector`) when a wind
 | `ui_keys` | Interact | SendKeys syntax: `{TAB}{ENTER}{ESC}{F2}{DOWN 3}`, `^a`, `+{TAB}`, `%f`, `~`, `^(ac)`; optional element to focus first. Alt+F4 on the main window is refused. |
 | `ui_scroll` | Interact | `down/up/pagedown/pageup/left/right` × `amount` (Scroll pattern on the target or an ancestor, mouse wheel fallback) or `into` (ScrollIntoView). |
 | `ui_run_script` | Interact | Runs a UI script (§7). |
+
+**Screenshot methods.** `ui_screenshot` never returns pixels of another window. Chain, first match wins:
+
+1. `print_window`: PrintWindow of the target window (works when covered). Used when the image is not blank.
+2. `revit_api`: the image is black, the target is Revit's main window and the Bridge is loaded in that pid. The gateway calls `view_export_image` for the active view. The image shows the model view only (no ribbon, palettes or dialogs) and its pixels do not map to `ui_click` x/y.
+3. `screen`: the image is black and (2) does not apply. Screen pixels of the window rectangle only, and only if the session renders (not locked, not a disconnected Remote Desktop session), the window is not minimized, and a grid of points across the rectangle all hit the target window (checked again after the copy).
+4. Otherwise `TARGET_NOT_READY` with `details.reason` = `covered`, `minimized`, `session_locked` or `desktop_not_rendered`, and a hint to use `view_export_image`. Other windows' titles are never reported.
+
+The `from_screen` parameter no longer exists. To check the Revit model view, call `view_export_image` directly: it renders through the Revit API, so it works when Revit is covered, minimized, locked or RDP-disconnected, and returns `{path, width, height, view_id, view_name, document}`. Check `method` and `captured_window` before treating an image as evidence.
 
 Actions auto-wait (`timeout_s`, default 5 s) until the target exists and is enabled. All UIA work runs on a
 worker thread with a wall-clock budget; one global input lock serializes actions (`BUSY` after 20 s).
@@ -119,14 +128,15 @@ worker thread with a wall-clock budget; one global input lock serializes actions
   then target them with `window`. WPF `x:Name` / `AutomationProperties.AutomationId`, WinForms `Name` become
   the `id`.
 - **Drawing canvas** has no UIA tree: `ui_screenshot`, find the spot, `ui_click x=… y=…` with
-  x = image pixel / `scale`. Check the result in the model through the Bridge.
+  x = image pixel / `scale` (only for `method` `print_window` or `screen`). Check the result in the model through the Bridge.
 - **Busy Revit**: UIA calls block while Revit runs a command; you get `TARGET_NOT_READY` ("target UI not
   responding") instead of a hang. A button that opens a modal dialog may report `blocked: true`.
 
 ## 7. UI scripts (`ui_run_script`)
 
-A UI script is a JSON file (or inline object) that replays a sequence of UI steps against one process and
-writes a report. Property names are case-insensitive.
+A UI script is a JSON file (or inline object) that replays UI steps against one process and writes a
+report. A step is a call of a UI tool: `action` is the tool name without the `ui_` prefix and the other keys
+are that tool's arguments. Property names are case-insensitive.
 
 ```json
 {
@@ -135,13 +145,13 @@ writes a report. Property names are case-insensitive.
   "screenshots": "fail",
   "vars": { "scale": "45" },
   "steps": [
-    { "do": "click", "target": "id=ID_SHEET_CONFIGURE" },
-    { "do": "wait", "window": "Sheet Configure", "timeout": 30 },
-    { "do": "type", "target": "id=txtScaleMin", "text": "${scale}", "keyboard": true, "verify": true },
-    { "do": "expect", "target": "id=txtJsonPreview", "match": "\"ScaleMin\"\\s*:\\s*45" },
-    { "do": "screenshot", "out": "${env:REVITAGENT_UI_OUT}\\settings.png" },
-    { "do": "click", "window": "Sheet Configure", "target": "id=btnCancel" },
-    { "do": "expect", "window": "Sheet Configure", "is": "gone" }
+    { "action": "click", "selector": "id=ID_SHEET_CONFIGURE" },
+    { "action": "wait", "window": "Sheet Configure", "timeout_s": 30 },
+    { "action": "type", "selector": "id=txtScaleMin", "text": "${scale}", "keyboard": true, "verify": true },
+    { "action": "expect", "selector": "id=txtJsonPreview", "match": "\"ScaleMin\"\\s*:\\s*45" },
+    { "action": "screenshot", "save_path": "${env:REVITAGENT_UI_OUT}\\settings.png", "optional": true },
+    { "action": "click", "window": "Sheet Configure", "selector": "id=btnCancel" },
+    { "action": "expect", "window": "Sheet Configure", "is": "gone" }
   ]
 }
 ```
@@ -149,44 +159,50 @@ writes a report. Property names are case-insensitive.
 - Tool arguments: `pid` (required), `script_path` or inline `script`, `out_dir` (inside the gateway
   runs/captures folders; default `<home>\runs\ui-scripts\<name>_<time>`), `vars`, `screenshots`,
   `validate_only`, `timeout_s` (600).
-- Top-level keys: `name timeout screenshots continueOnError vars dialogs window steps`.
-- Step keys: `do target window text is match exact count keyboard verify append clear mouse gone out x y
-  depth max limit within from offsetx offsety interactive all raw fromscreen timeout ms name role
-  continueOnError`.
-- Verbs: `windows use snapshot find inspect text point screenshot click dblclick rightclick hover type keys
-  focus toggle expand collapse select scroll drag close wait expect table dialogs sleep`.
+- Top-level keys: `name`, `timeout` (seconds per step, default 10), `screenshots` (`fail` | `each` | `none`),
+  `vars`, `dialogs`, `steps`.
+- Actions: `list_windows snapshot find inspect screenshot click type select toggle expand keys scroll wait
+  expect read_table`, with the argument names of the matching tool (`ref` or `selector`, `window`, `text`,
+  `item`, `index`, `state`, `is`, `match`, `exact`, `count`, `button`, `double`, `mouse`, `x`, `y`,
+  `keyboard`, `clear`, `append`, `verify`, `keys`, `direction`, `amount`, `collapse`, `limit`, ...).
+  Right-click and double-click are `button: "right"` and `double: true`. Differences: `timeout_s` is the
+  step's auto-wait; `screenshot` and `read_table` write to `save_path` (PNG / CSV) inside the run folders;
+  a `ref` only works after a `snapshot` or `find` step of the same script.
+- Two control actions with no tool: `attach` (`window` becomes the current window) and `pause` (`ms`).
+- Every step may also carry `name` (its label in the report) and `optional`.
 - Variables: `${name}` comes from the script `vars`, the `vars` argument, or `${dir}`. `${env:NAME}` reads
   the environment only for names starting with `REVITAGENT_UI_`; every other name expands to an empty string,
   so a script cannot read the gateway's secrets. `REVITAGENT_UI_HOST_PID` is the target pid and
   `REVITAGENT_UI_OUT` is the output folder.
-- The run starts at the pid's main window (or the script's `window`). `use`, `wait`, `snapshot` and `find`
-  with a window make that window current; when the current dialog closes, steps fall back to the main window.
-- Dialog rules (`{name, title, text?, proc?, click | keys, mouse?}`) run inside every auto-wait and `expect`
-  loop, only for windows of the pid, and never for a window whose title or text contains a forbidden word.
-- Report: `report.json`, `report.md`, `NN_fail.png` / `NN_pass.png`, `NN_fail_snapshot.txt`. The tool result
-  has `status` (PASSED | FAILED | BLOCKED), `passed`, `failed` (failed check steps), `blocked`, `warned`,
-  `failed_steps`, `report_path`, `verdict` and per-step results.
-- Step roles: `nav` = steps on the host main window, `check` = steps on add-in windows. Only a failing
-  `check` step makes the run FAILED. A failing `nav` step, or a layout problem (no on-screen rectangle,
-  offscreen, virtualized), makes it BLOCKED, or WARN with `continueOnError`.
+- The run starts at the pid's main window. `attach`, and `wait` / `snapshot` / `find` with a `window`, make
+  that window current; when it closes, steps fall back to the main window.
+- Dialog rules (`{name, title, text?, proc?, click | keys, mouse?}`) run inside every auto-wait, `wait` and
+  `expect` loop, only for windows of the pid, and never for a window whose title or text contains a forbidden
+  word. Such a dialog is left for a human and the step in front of it ends `blocked`.
+- Step outcome: every step is required unless `optional: true`. Step status is `passed`, `failed`,
+  `skipped` (after the run stopped) or `blocked` (a forbidden dialog or a safety refusal). The first failed or
+  blocked required step stops the run; an optional step that fails is recorded and the run goes on.
+- Run verdict: `passed`, `failed` (a required step failed) or `blocked` (a required step was blocked).
+- Report: `report.json`, `report.md`, `NN_<status>.png`, `NN_<status>_snapshot.txt`. The tool result has
+  `status` (the verdict), `passed`, `failed`, `blocked`, `optional_failed`, `skipped`, `failed_steps`
+  (numbers of the required steps that failed or were blocked), `report_path`, and per-step `status`,
+  `observed`, `expected` (for `expect` and `wait`) and `error`.
 
 ### Rejected before running
 
-`PERMISSION_DENIED` is returned for: the verbs `launch` and `run`; `close` or Alt+F4 without `window`; `type`
-into targets named like password / token / secret; dialog rules whose title or text contains security,
-unsigned, license, recover, delete, overwrite or replace (some localized equivalents included). Warnings: a
-top-level `window` other than `pid:${env:REVITAGENT_UI_HOST_PID}`, and Ctrl+S / Ctrl+O keys.
+`PERMISSION_DENIED` is returned for: the actions `launch`, `run` and `close`; Alt+F4 without `window`; `type`
+into targets named like password / token / secret; a step in a security / license / sign-in / recovery /
+delete / overwrite / replace window; dialog rules whose title or text contains one of those words (some
+localized equivalents included). An unknown `action` is a validation error. Warning: Ctrl+S / Ctrl+O keys.
 
 ### Script limits compared with the interactive tools
 
 - `screenshot` covers a window or element only, never the whole screen, and never restores a minimized window.
-- Region capture is not supported; use `in=` / `within`.
-- `click` with `x`/`y` in a script takes screen pixels but is confined to the current window of the pid; the
-  `ui_click` tool takes window-relative `x`/`y`.
+- Region capture is not supported; use `in=` in the selector.
 - Every window must belong to `pid`; output files must stay in the gateway runs/captures folders.
 - The gateway never moves the mouse just to unlock `SetForegroundWindow`: if the window cannot get the
   foreground, real input is refused (`TARGET_NOT_READY`); pattern actions still work.
-- `close` refuses the main window and dismisses an open popup with Esc first.
+- There is no `close`: close a window through its own button or Esc.
 - Refs are per MCP session and window; a script uses its own session.
 
 ## 8. Errors

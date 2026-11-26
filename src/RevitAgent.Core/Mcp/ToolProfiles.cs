@@ -8,8 +8,9 @@ using RevitAgent.Core.Tools;
 namespace RevitAgent.Core.Mcp;
 
 /// <summary>
-/// Per-session tool profiles. A profile only shapes <c>tools/list</c> (what a model must load before it starts);
-/// tools outside it still run when called by name (macros, scenario runner, recorder, E2E).
+/// Per-session tool profiles. A profile shapes <c>tools/list</c> (what a model must load before it starts) and MCP
+/// <c>tools/call</c> refuses tools outside it (NOT_FOUND). Internal callers (macros, scenario runner, recorder, dashboard)
+/// use <see cref="ToolRegistry"/> directly and are not restricted.
 /// <list type="bullet">
 /// <item><c>core</c> (default): the tools listed in <see cref="CoreTools"/>, small enough for 32k-context models.</item>
 /// <item><c>full</c>: every registered tool.</item>

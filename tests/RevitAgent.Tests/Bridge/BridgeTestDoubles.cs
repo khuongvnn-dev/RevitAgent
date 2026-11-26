@@ -172,7 +172,7 @@ internal sealed class BridgeHarness : IDisposable
 {
     public const int Pid = 424242;
 
-    public BridgeHarness(TimeSpan? margin = null)
+    public BridgeHarness(TimeSpan? margin = null, TimeSpan? queueWait = null)
     {
         PipeName = "revitagent-test-bridge-" + Guid.NewGuid().ToString("N")[..10];
         Ui = new FakeRevitThread();
@@ -191,6 +191,7 @@ internal sealed class BridgeHarness : IDisposable
             PipeNameForPid = _ => name,
             ConnectTimeout = TimeSpan.FromSeconds(3),
             BridgeTimeoutMargin = margin ?? TimeSpan.FromSeconds(1),
+            QueueWait = queueWait ?? BridgeClient.DefaultQueueWait,
         });
         WaitForPipe();
     }

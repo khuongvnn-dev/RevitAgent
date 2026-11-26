@@ -60,7 +60,7 @@ public class UiToolsDesktopTests
         var r = await h.CallRawAsync("ui_run_script", new
         {
             pid = h.Pid,
-            script = new { steps = new object[] { new { @do = "click", window = title, target = "id=btnCount" } } },
+            script = new { steps = new object[] { new { action = "click", window = title, selector = "id=btnCount" } } },
         });
         Assert.True(r.IsError, UiHarness.Text(r));
         Assert.Equal("PERMISSION_DENIED", r.ErrorCode);

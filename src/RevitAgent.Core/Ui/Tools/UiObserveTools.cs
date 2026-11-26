@@ -1,7 +1,11 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using RevitAgent.Contracts.Bridge;
 using RevitAgent.Contracts.Protocol;
+using RevitAgent.Core.Bridge;
 using RevitAgent.Core.Tools;
 
 namespace RevitAgent.Core.Ui.Tools;
@@ -333,28 +337,32 @@ public sealed class UiReadTableTool : UiToolBase
     }
 }
 
-/// <summary>ui_screenshot — window or element PNG for the agent's eyes.</summary>
+/// <summary>ui_screenshot — window or element PNG for the agent's eyes. Fails closed: never returns pixels of another window.</summary>
 public sealed class UiScreenshotTool : UiToolBase
 {
-    public UiScreenshotTool(UiAutomationService ui)
+    private readonly BridgeClient? _bridge;
+
+    public UiScreenshotTool(UiAutomationService ui, BridgeClient? bridge = null)
         : base(ui)
     {
+        _bridge = bridge;
     }
 
     public override string Name => "ui_screenshot";
 
     public override string Description =>
-        "PNG of a window (or an element: ref/selector) scaled to max_width, with {path, scale}; full size saved under captures. " +
-        "Works when covered (PrintWindow); from_screen=true copies screen pixels (canvases that print black). " +
-        "ui_click x/y = image pixel / scale. Read-only; not for minimized windows.";
+        "PNG of a window or element (ref/selector), scaled to max_width: {path, scale, method, captured_window}. " +
+        "method: print_window (works covered); revit_api (black Revit canvas: Bridge-rendered active model view, no UI); " +
+        "screen (that window's rectangle only, if uncovered and the session renders). Else TARGET_NOT_READY. ui_click x/y = pixel / scale.";
 
     public override ToolPermission Permission => ToolPermission.Read;
 
     protected override Schema BuildSchema() => ElementArgs(Targeting(Schema.Object()), "an element to crop to")
         .String("save_path", "PNG path in captures or runs.")
         .Integer("max_width", "Max image width.", defaultValue: 1600, minimum: 100, maximum: 4000)
-        .Boolean("from_screen", "Copy screen pixels.", defaultValue: false)
         .Boolean("include_image", "Return the image (false: only save).", defaultValue: true);
+
+    private sealed record Outcome(Dictionary<string, object?>? Info, byte[]? Png, int PendingPid, string? PendingTitle);
 
     public override async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
     {
@@ -362,22 +370,128 @@ public sealed class UiScreenshotTool : UiToolBase
         var reference = Ref(call);
         var selector = SelectorArg(call);
         var maxWidth = Math.Clamp(call.GetInt("max_width", 1600) ?? 1600, 100, 4000);
-        var fromScreen = call.GetBool("from_screen");
         var includeImage = call.GetBool("include_image", true);
         var path = ResolveSavePath(call.GetString("save_path"));
 
-        CheckDesktop();
-        var (info, image) = await Ui.RunAsync(call.SessionId, TimeSpan.FromSeconds(30), input: false, cancellationToken, op =>
+        var outcome = await CaptureAsync(call.SessionId, spec, reference, selector, maxWidth, includeImage, path, _bridge is not null, null, cancellationToken).ConfigureAwait(false);
+        if (outcome.Info is null)
+        {
+            string? bridgeError = null;
+            try
+            {
+                var args = new JsonObject { ["save_path"] = path, ["pixel_width"] = maxWidth };
+                var res = await _bridge!.CallAsync(outcome.PendingPid, BridgeToolNames.ViewExportImage, JsonSerializer.SerializeToElement(args), TimeSpan.FromSeconds(75), cancellationToken).ConfigureAwait(false);
+                outcome = FromBridge(res, path, includeImage, outcome.PendingPid, outcome.PendingTitle ?? string.Empty);
+            }
+            catch (GatewayException ex)
+            {
+                bridgeError = $"{ex.Code}: {ex.Message}";
+            }
+
+            if (outcome.Info is null)
+            {
+                outcome = await CaptureAsync(call.SessionId, spec, reference, selector, maxWidth, includeImage, path, false, bridgeError, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        var result = ToolResult.Json(outcome.Info!);
+        if (outcome.Png is not null)
+        {
+            result.AddImage(outcome.Png);
+        }
+
+        return result;
+    }
+
+    private static Outcome FromBridge(JsonElement res, string path, bool includeImage, int pid, string title)
+    {
+        int Int(string n) => res.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var i) ? i : 0;
+        if (!File.Exists(path))
+        {
+            throw GatewayException.NotReady("The Bridge reported an exported view image but the file is missing: " + path);
+        }
+
+        var width = Int("width");
+        var height = Int("height");
+        var info = new Dictionary<string, object?>
+        {
+            ["path"] = path,
+            ["method"] = "revit_api",
+            ["captured_window"] = new { pid, title },
+            ["width"] = width,
+            ["height"] = height,
+            ["image_width"] = includeImage ? width : null,
+            ["image_height"] = includeImage ? height : null,
+            ["scale"] = includeImage ? 1.0 : null,
+            ["view"] = new
+            {
+                view_id = res.TryGetProperty("view_id", out var vid) ? vid.Clone() : (JsonElement?)null,
+                view_name = res.TryGetProperty("view_name", out var vn) ? vn.GetString() : null,
+                document = res.TryGetProperty("document", out var d) ? d.GetString() : null,
+            },
+            ["note"] = "PrintWindow returned black for the Revit canvas; this is the active model view rendered by Revit, not the UI (ribbon, palettes, dialogs). Pixels do not map to ui_click x/y.",
+        };
+        return new Outcome(info, includeImage ? File.ReadAllBytes(path) : null, 0, null);
+    }
+
+    private Task<Outcome> CaptureAsync(string session, WindowSpec spec, string? reference, string? selector, int maxWidth, bool includeImage, string path, bool allowBridge, string? bridgeError, CancellationToken cancellationToken)
+    {
+        return Ui.RunAsync(session, TimeSpan.FromSeconds(30), input: false, cancellationToken, op =>
         {
             var t = Ui.ResolveTarget(op, spec, reference, selector, allowWindow: true);
             CheckTarget(t.Window);
-            if (Native.NativeMethods.IsIconic(t.Window.Handle))
+            var hwnd = t.Window.Handle;
+            var captured = new { pid = t.Window.ProcessId, title = t.Window.Title };
+            var minimized = Native.NativeMethods.IsIconic(hwnd);
+
+            // 1. PrintWindow (never copies the screen). A minimized window is not printed: its content would be stale or empty.
+            Bitmap? full = minimized ? null : WindowCapture.CaptureWindow(hwnd);
+            var method = ScreenshotMethod.PrintWindow;
+            if (full is null)
             {
-                throw GatewayException.NotReady($"Window \"{UiText.Clip(t.Window.Title, 60)}\" is minimized; restore it first (cannot capture a minimized window).");
+                if (!minimized && !Native.NativeMethods.IsWindow(hwnd))
+                {
+                    throw GatewayException.NotFound("The window has no size or is gone.");
+                }
+
+                var revitMain = t.IsWindow
+                    && string.Equals(t.Window.ProcessName, "Revit", StringComparison.OrdinalIgnoreCase)
+                    && op.Service.IsMainWindow(t.Window);
+                var bridgeLoaded = allowBridge && revitMain && _bridge!.IsPipePresent(t.Window.ProcessId);
+                var occluded = !minimized && !bridgeLoaded && ScreenGuard.IsOccluded(hwnd);
+                var decision = ScreenshotPlan.Decide(new ScreenshotFacts(true, revitMain, bridgeLoaded, ScreenGuard.Session(), minimized, occluded));
+                if (decision.IsFailure)
+                {
+                    throw new GatewayException(
+                        GatewayErrorCodes.TargetNotReady,
+                        decision.FailureMessage!,
+                        new { reason = decision.FailureCode, window = captured, bridge_error = bridgeError, hint = ScreenshotPlan.Hint });
+                }
+
+                if (decision.Method == ScreenshotMethod.RevitApi)
+                {
+                    return new Outcome(null, null, t.Window.ProcessId, t.Window.Title);
+                }
+
+                // 3. Screen pixels of exactly this window rectangle, verified again right after the copy.
+                method = ScreenshotMethod.Screen;
+                full = ScreenGuard.CopyRect(hwnd);
+                if (full is not null && ScreenGuard.IsOccluded(hwnd))
+                {
+                    full.Dispose();
+                    throw new GatewayException(
+                        GatewayErrorCodes.TargetNotReady,
+                        "Another window covered the target while it was captured, so the copy was discarded. " + ScreenshotPlan.Hint,
+                        new { reason = ScreenshotPlan.Covered, window = captured, bridge_error = bridgeError, hint = ScreenshotPlan.Hint });
+                }
+
+                if (full is null)
+                {
+                    throw GatewayException.NotFound("The window has no size or is gone.");
+                }
             }
 
-            using var full = (fromScreen ? WindowCapture.CaptureWindowFromScreen(t.Window.Handle) : WindowCapture.CaptureWindow(t.Window.Handle))
-                ?? throw GatewayException.NotFound("The window has no size or is gone.");
+            using var fullImage = full;
             Bitmap? cropped = null;
             object? crop = null;
             if (!t.IsWindow)
@@ -385,13 +499,13 @@ public sealed class UiScreenshotTool : UiToolBase
                 var b = op.Core.ReadLive(t.Element).Bounds
                     ?? throw GatewayException.NotReady($"{t.Node.Describe()} has no on-screen rectangle (offscreen, hidden or virtualized).");
                 var area = new Rectangle(b.X - t.Window.Left, b.Y - t.Window.Top, b.Width, b.Height);
-                cropped = WindowCapture.Crop(full, area) ?? throw GatewayException.NotReady($"{t.Node.Describe()} is outside the window area.");
+                cropped = WindowCapture.Crop(fullImage, area) ?? throw GatewayException.NotReady($"{t.Node.Describe()} is outside the window area.");
                 crop = new { x = area.X, y = area.Y, width = area.Width, height = area.Height };
             }
 
             try
             {
-                var shot = cropped ?? full;
+                var shot = cropped ?? fullImage;
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllBytes(path, WindowCapture.EncodePng(shot));
                 byte[]? png = null;
@@ -408,6 +522,8 @@ public sealed class UiScreenshotTool : UiToolBase
                 var d = new Dictionary<string, object?>
                 {
                     ["path"] = path,
+                    ["method"] = method == ScreenshotMethod.Screen ? "screen" : "print_window",
+                    ["captured_window"] = captured,
                     ["width"] = shot.Width,
                     ["height"] = shot.Height,
                     ["image_width"] = includeImage ? iw : null,
@@ -416,23 +532,16 @@ public sealed class UiScreenshotTool : UiToolBase
                     ["crop"] = crop,
                     ["window"] = WindowInfo(op, t.Window),
                     ["target"] = t.IsWindow ? null : Ui.TargetInfo(op, t),
+                    ["bridge_error"] = bridgeError,
                     ["note"] = t.IsWindow ? "x/y for ui_click = image pixel / scale (window-relative)" : null,
                 };
-                return (d, png);
+                return new Outcome(d, png, 0, null);
             }
             finally
             {
                 cropped?.Dispose();
             }
-        }).ConfigureAwait(false);
-
-        var result = ToolResult.Json(info);
-        if (image is not null)
-        {
-            result.AddImage(image);
-        }
-
-        return result;
+        });
     }
 
     private string ResolveSavePath(string? requested)

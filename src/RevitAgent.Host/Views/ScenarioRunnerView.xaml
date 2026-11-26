@@ -99,12 +99,12 @@
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
-                            <!-- Scenario Name & Suite -->
+                            <!-- Scenario Name -->
                             <GridViewColumn Header="{DynamicResource Str_ColScenarioName}" Width="200">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Suite}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <TextBlock Text="{Binding ScenarioName}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
                                             <TextBlock Text="{Binding Name}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>

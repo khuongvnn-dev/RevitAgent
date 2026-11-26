@@ -8,7 +8,7 @@ public sealed class RunHistoryItem
 {
     public string Id { get; init; } = string.Empty;
 
-    public string Suite { get; init; } = string.Empty;
+    public string Scenario { get; init; } = string.Empty;
 
     public string Trigger { get; init; } = "manual";
 

@@ -145,7 +145,7 @@ public sealed class SandboxService
                 DataDir = storeRun.DataDir,
                 EvidenceDir = storeRun.EvidenceDir,
                 CreatedAt = storeRun.StartedAt,
-                Name = storeRun.Suite,
+                Name = storeRun.Scenario,
                 Purpose = purpose,
             };
         }
@@ -268,7 +268,7 @@ public sealed class SandboxService
     {
         if (_runStore != null)
         {
-            var storeRuns = _runStore.ListRuns(new RunFilter { Suite = contains, Limit = limit });
+            var storeRuns = _runStore.ListRuns(new RunFilter { Scenario = contains, Limit = limit });
             var result = new List<SandboxRunSummary>();
             foreach (var r in storeRuns)
             {
@@ -279,7 +279,7 @@ public sealed class SandboxService
                     RunId = r.Id,
                     Path = r.RunDir,
                     CreatedAt = r.StartedAt,
-                    Name = r.Suite,
+                    Name = r.Scenario,
                     Purpose = info?["purpose"].AsString(),
                     Models = copies.Select(c => c["copy_path"].AsString())
                         .Where(p => p is not null && ModelExtensions.Contains(System.IO.Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))

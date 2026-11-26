@@ -41,6 +41,7 @@ namespace RevitAgent.Bridge.Tools
             _revit[BridgeToolNames.RibbonListItems] = UiTools.ListRibbon;
             _revit[BridgeToolNames.CommandPost] = UiTools.PostCommand;
             _revit[BridgeToolNames.ViewActivate] = UiTools.ActivateView;
+            _revit[BridgeToolNames.ViewExportImage] = ViewExportTools.ExportImage;
             _revit[BridgeToolNames.SelectionGet] = UiTools.GetSelection;
             _revit[BridgeToolNames.SelectionSet] = UiTools.SetSelection;
 

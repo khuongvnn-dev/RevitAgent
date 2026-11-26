@@ -52,7 +52,7 @@ public sealed class ScenarioLibraryService
 
                 try
                 {
-                    var recent = _runStore.ListRuns(new RunFilter { Suite = scenarioName, Limit = 1 });
+                    var recent = _runStore.ListRuns(new RunFilter { Scenario = scenarioName, Limit = 1 });
                     if (recent.Count > 0)
                     {
                         lastVerdict = recent[0].Verdict;

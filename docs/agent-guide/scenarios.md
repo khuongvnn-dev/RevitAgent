@@ -114,7 +114,7 @@ What a run does, in order:
 3. **Model copy**: sha256 of the original, `sandbox_copy_model` into the run folder, `doc_open` of the copy, then `doc_info` must report a path inside the run folder or the run stops (ENV).
 4. **Each step**: a readiness check (`revit_get_state`) first: busy or loading is waited for up to 90 s; a modal dialog, an unresponsive or exited Revit stops the run (ENV).
    - `tool` step: the result is saved as `data\<name>.json`. A failing tool FAILs the step and its error goes to `data\<name>.error.json`; `MODAL_BLOCKED` stops the whole run.
-   - `ui` step: `ui_run_script {script_path, pid, out_dir: data\ui\NN-<name>}`. A script that ends **BLOCKED** (it could not reach the part under test) writes no `data\<name>.json` (the result is `<name>.blocked.json`); the run continues and every check reading `<name>.json` is NOT_MEASURABLE. A script that succeeds but leaves a **new window** open FAILs unless `leave_open: true`. `doc_info` is re-checked after a ui step.
+   - `ui` step: `ui_run_script {script_path, pid, out_dir: data\ui\NN-<name>}`. A script whose verdict is `blocked` (a forbidden dialog or a safety refusal stopped it) makes the step **BLOCKED**; it writes no `data\<name>.json` (the result is `<name>.blocked.json`); the run continues and every check reading `<name>.json` is NOT_MEASURABLE. A script that succeeds but leaves a **new window** open FAILs unless `leave_open: true`. `doc_info` is re-checked after a ui step.
 5. **Cleanup, always**, even after errors: `doc_close` without saving, close Revit **only if this run launched it**, keep the model copy, and verify the original model's sha256 is unchanged (a change is ERROR).
 6. **Evaluate the checks and write the reports.**
 

@@ -316,6 +316,12 @@
     <sys:String x:Key="Str_GrantUntilOff">Đến khi tắt</sys:String>
     <sys:String x:Key="Str_GrantRemainingFmt">Còn {0}</sys:String>
     <sys:String x:Key="Str_BtnGrantAction">Cho AI thao tác</sys:String>
+    <sys:String x:Key="Str_CardOwnerApproval">Yêu cầu cần duyệt</sys:String>
+    <sys:String x:Key="Str_ApprovalInstallFmt">{0} xin cài RevitAgent Bridge cho Revit {1}.</sys:String>
+    <sys:String x:Key="Str_ApprovalUninstallFmt">{0} xin GỠ RevitAgent Bridge của Revit {1}.</sys:String>
+    <sys:String x:Key="Str_NoteOwnerApproval">Thay đổi thư mục add-in Revit dùng chung của máy này. Không trả lời trong 5 phút = từ chối.</sys:String>
+    <sys:String x:Key="Str_BtnApprove">Cho phép</sys:String>
+    <sys:String x:Key="Str_BtnDeny">Từ chối</sys:String>
     <sys:String x:Key="Str_BtnRevokeGrant">Thu hồi</sys:String>
 
     <!-- Telegram Channel -->
@@ -339,14 +345,14 @@
     <sys:String x:Key="Str_CardRunHistory">Lịch sử chạy</sys:String>
     <sys:String x:Key="Str_BtnOpenReport">Mở báo cáo</sys:String>
     <sys:String x:Key="Str_BtnOpenFolder">Mở thư mục</sys:String>
-    <sys:String x:Key="Str_FilterSuite">Lọc theo suite hoặc mã...</sys:String>
+    <sys:String x:Key="Str_FilterScenario">Lọc theo kịch bản hoặc mã...</sys:String>
     <sys:String x:Key="Str_FilterVerdict">Kết quả</sys:String>
     <sys:String x:Key="Str_SecRunStore">THƯ MỤC DỮ LIỆU CHẠY</sys:String>
     <sys:String x:Key="Str_LblRunStoreRoot">Thư mục dữ liệu chạy:</sys:String>
     <sys:String x:Key="Str_BtnBrowse">Chọn...</sys:String>
     <sys:String x:Key="Str_TxtNoRuns">Chưa có dữ liệu lần chạy nào.</sys:String>
     <sys:String x:Key="Str_ColRunId">Mã chạy</sys:String>
-    <sys:String x:Key="Str_ColSuite">Suite</sys:String>
+    <sys:String x:Key="Str_ColScenario">Kịch bản</sys:String>
     <sys:String x:Key="Str_ColTrigger">Kích hoạt</sys:String>
     <sys:String x:Key="Str_ColStarted">Bắt đầu</sys:String>
     <sys:String x:Key="Str_ColDuration">Thời lượng</sys:String>
@@ -359,7 +365,7 @@
     <sys:String x:Key="Str_ScenarioLibraryFolder">Thư mục:</sys:String>
     <sys:String x:Key="Str_BtnSelectAll">Chọn tất cả</sys:String>
     <sys:String x:Key="Str_BtnSelectNone">Bỏ chọn</sys:String>
-    <sys:String x:Key="Str_ColScenarioName">Tên kịch bản / Suite</sys:String>
+    <sys:String x:Key="Str_ColScenarioName">Tên kịch bản</sys:String>
     <sys:String x:Key="Str_ColRevitVer">Phiên bản</sys:String>
     <sys:String x:Key="Str_ColLastVerdict">Kết quả trước</sys:String>
     <sys:String x:Key="Str_ColLastRunTime">Thời gian chạy trước</sys:String>

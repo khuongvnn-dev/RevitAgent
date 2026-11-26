@@ -46,7 +46,7 @@ public class RunStoreFolderNamingTests
         using var doc = JsonDocument.Parse(File.ReadAllText(runJsonPath));
         var root = doc.RootElement;
         Assert.Equal(run.Id, root.GetProperty("id").GetString());
-        Assert.Equal("Kiểm tra Tường & Cửa #1", root.GetProperty("suite").GetString());
+        Assert.Equal("Kiểm tra Tường & Cửa #1", root.GetProperty("scenario").GetString());
         Assert.Equal("manual", root.GetProperty("trigger").GetString());
         Assert.Equal(Environment.MachineName, root.GetProperty("machine").GetString());
         Assert.Equal(Environment.UserName, root.GetProperty("user").GetString());
@@ -81,7 +81,7 @@ public class RunStoreFolderNamingTests
     [Theory]
     [InlineData("Mô hình Kiểm tra #1", "mo-hinh-kiem-tra-1")]
     [InlineData("Đường Ống Gió & Cửa Gió", "duong-ong-gio-cua-gio")]
-    [InlineData("Very Long Suite Name Exceeding Forty Characters In Total Length", "very-long-suite-name-exceeding-forty-cha")]
+    [InlineData("Very Long Scenario Name Exceeding Forty Characters In Total Length", "very-long-scenario-name-exceeding-forty")]
     [InlineData("   ### $$$ --- ", "run")]
     [InlineData(null, "run")]
     [InlineData("", "run")]

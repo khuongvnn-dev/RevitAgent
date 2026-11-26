@@ -20,21 +20,20 @@ public sealed class UiScriptValidation
 
 /// <summary>
 /// Static validation of a UI script:
-/// no <c>launch</c>/<c>run</c>, no <c>close</c> or Alt+F4 without a window, no typing into password/token fields, no
+/// no <c>launch</c>/<c>run</c>/<c>close</c>, no Alt+F4 without a window, no typing into password/token fields, no
 /// dialog rule that answers security / unsigned / license / recovery / delete / overwrite / replace dialogs.
 /// </summary>
 public static class UiScriptValidator
 {
-    /// <summary>Commands valid in a script, plus sleep.</summary>
-    public static readonly string[] KnownVerbs =
+    /// <summary>Step actions: the ui_* tool names without the prefix, plus the two control steps attach and pause.</summary>
+    public static readonly string[] KnownActions =
     {
-        "windows", "use", "snapshot", "find", "inspect", "text", "point", "screenshot", "click", "dblclick", "rightclick",
-        "hover", "type", "keys", "focus", "toggle", "expand", "collapse", "select", "scroll", "drag", "close", "wait", "expect", "table",
-        "dialogs", "sleep", "launch", "run",
+        "list_windows", "attach", "snapshot", "find", "inspect", "screenshot", "click", "type", "select", "toggle", "expand",
+        "keys", "scroll", "wait", "expect", "read_table", "pause",
     };
 
-    /// <summary>Banned in a UI step: the host app is started/stopped by the runner, and scripts do not nest.</summary>
-    public static readonly string[] BannedVerbs = { "launch", "run" };
+    /// <summary>Refused in a UI script: the runner owns the host application, and scripts do not nest or close windows.</summary>
+    public static readonly string[] BannedActions = { "launch", "run", "close" };
 
     /// <summary>Dialog titles/texts never answered automatically.</summary>
     public static readonly string[] NeverAutoAnswer =
@@ -60,11 +59,6 @@ public static class UiScriptValidator
             v.Errors.Add(new UiScriptIssue("the script has no steps", false));
         }
 
-        if (script.Window is { Length: > 0 } win && !Regex.IsMatch(win, "^pid:\\$\\{env:REVITAGENT_UI_HOST_PID\\}$"))
-        {
-            v.Warnings.Add($"window '{win}' — leave it empty to start at the main window of the target pid");
-        }
-
         var shots = UiScript.Str(script.Root, "screenshots");
         if (shots is { Length: > 0 } && shots.ToLowerInvariant() is not ("fail" or "each" or "none"))
         {
@@ -74,29 +68,23 @@ public static class UiScriptValidator
         foreach (var st in script.Steps)
         {
             var n = st.Number;
-            var verb = st.Do;
+            var action = st.Action;
             var w = st.Raw("window");
-            if (verb.Length == 0)
+            if (action.Length == 0)
             {
-                v.Errors.Add(new UiScriptIssue($"steps[{n}] has no 'do'", false));
+                v.Errors.Add(new UiScriptIssue($"steps[{n}] has no 'action'", false));
                 continue;
             }
 
-            var role = st.Raw("role");
-            if (role is { Length: > 0 } && role is not ("nav" or "check"))
+            if (BannedActions.Contains(action))
             {
-                v.Errors.Add(new UiScriptIssue($"steps[{n}] role '{role}' — only nav (navigating the host app UI) | check (acting/checking on an add-in window)", false));
-            }
-
-            if (!KnownVerbs.Contains(verb))
-            {
-                v.Errors.Add(new UiScriptIssue($"steps[{n}] do '{verb}' is not a UI script command ({string.Join(", ", KnownVerbs.Except(BannedVerbs))})", false));
+                v.Errors.Add(new UiScriptIssue($"steps[{n}] action '{action}' is forbidden in a UI script - the host application is started and stopped by the runner, scripts do not nest, and windows are closed through their own buttons", true));
                 continue;
             }
 
-            if (BannedVerbs.Contains(verb))
+            if (!KnownActions.Contains(action))
             {
-                v.Errors.Add(new UiScriptIssue($"steps[{n}] do '{verb}' is forbidden in a UI script — the host app is launched by the runner (launch) and scripts do not nest (run)", true));
+                v.Errors.Add(new UiScriptIssue($"steps[{n}] action '{action}' is not a UI script action ({string.Join(", ", KnownActions)})", false));
                 continue;
             }
 
@@ -105,14 +93,9 @@ public static class UiScriptValidator
                 v.Errors.Add(new UiScriptIssue($"steps[{n}] window '{w}' is a '{wcat}' dialog - security / license / sign-in / recovery / delete / overwrite / replace dialogs are never acted on by a script; a human must answer them", true));
             }
 
-            if (verb == "close" && string.IsNullOrWhiteSpace(w))
+            if (action == "keys")
             {
-                v.Errors.Add(new UiScriptIssue($"steps[{n}] close without 'window' would close the host application's main window — set window = the dialog title to close", true));
-            }
-
-            if (verb == "keys")
-            {
-                var k = st.Raw("text") is { Length: > 0 } t ? t : st.Raw("target") ?? string.Empty;
+                var k = st.Raw("keys") ?? string.Empty;
                 if (k.Contains("%{F4}", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(w))
                 {
                     v.Errors.Add(new UiScriptIssue($"steps[{n}] keys Alt+F4 without 'window' would close the host application", true));
@@ -120,16 +103,16 @@ public static class UiScriptValidator
 
                 if (SaveOrOpen.IsMatch(k))
                 {
-                    v.Warnings.Add($"steps[{n}] keys '{k}' (Ctrl+S / Ctrl+O) — only save/open copies inside the run folder");
+                    v.Warnings.Add($"steps[{n}] keys '{k}' (Ctrl+S / Ctrl+O) - only save/open copies inside the run folder");
                 }
             }
 
-            if (verb == "type")
+            if (action == "type")
             {
-                var t = (st.Raw("target") ?? string.Empty) + " " + (st.Raw("name") ?? string.Empty);
+                var t = (st.Raw("selector") ?? st.Raw("ref") ?? string.Empty) + " " + (st.Raw("name") ?? string.Empty);
                 if (SecretField.IsMatch(t))
                 {
-                    v.Errors.Add(new UiScriptIssue($"steps[{n}] type into '{t.Trim()}' — scripts must not type passwords / secrets", true));
+                    v.Errors.Add(new UiScriptIssue($"steps[{n}] type into '{t.Trim()}' - scripts must not type passwords / secrets", true));
                 }
             }
         }

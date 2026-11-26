@@ -11,10 +11,10 @@ using RevitAgent.Core.Ui.Native;
 
 namespace RevitAgent.Core.Ui.Script;
 
-/// <summary>Result of one script step (report.json fields, plus the UiStep role).</summary>
-public sealed record UiStepResult(int N, string Step, string Status, long Ms, string Output, string Error, string Screenshot, string Role, string Outcome);
+/// <summary>Result of one script step (report.json fields). Status: passed | failed | skipped | blocked.</summary>
+public sealed record UiStepResult(int N, string Step, string Status, long Ms, string Observed, string Expected, string Error, string Screenshot, bool Optional);
 
-/// <summary>Result of a script run.</summary>
+/// <summary>Result of a script run. Verdict: passed | failed | blocked.</summary>
 public sealed class UiScriptReport
 {
     public required string Name { get; init; }
@@ -25,7 +25,14 @@ public sealed class UiScriptReport
 
     public int Passed { get; init; }
 
+    /// <summary>Required steps that failed.</summary>
     public int Failed { get; init; }
+
+    /// <summary>Optional steps that failed or were refused (recorded, but they do not affect the verdict).</summary>
+    public int OptionalFailed { get; init; }
+
+    /// <summary>Required steps refused by a safety rule or stopped by a forbidden dialog.</summary>
+    public int Blocked { get; init; }
 
     public int Skipped { get; init; }
 
@@ -35,9 +42,6 @@ public sealed class UiScriptReport
 
     public required IReadOnlyList<UiStepResult> Steps { get; init; }
 
-    /// <summary>SUCCEEDED | FAILED (add-in misbehaved) | BLOCKED (could not reach what to check).</summary>
-    public required string Measured { get; init; }
-
     public required string RunDir { get; init; }
 
     public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
@@ -45,15 +49,12 @@ public sealed class UiScriptReport
 
 /// <summary>
 /// Executes a UI script against one process:
-/// starts at the main window of the pid (or the script's <c>window</c>), runs steps in order with auto-wait and dialog
+/// starts at the main window of the pid, runs steps in order with auto-wait and dialog
 /// rules, screenshots on failure (or each step), writes report.json / report.md and NN_fail_snapshot.txt.
 /// Every window it touches must belong to the target pid.
 /// </summary>
 public sealed class UiScriptRunner
 {
-    private const string MainMarker = "<main>";
-    private static readonly Regex LayoutError = new("(?i)no on-screen rectangle|offscreen|virtualiz", RegexOptions.Compiled);
-
     private readonly UiOp _op;
     private readonly UiAutomationService _ui;
     private readonly UiScript _script;
@@ -66,6 +67,7 @@ public sealed class UiScriptRunner
     private readonly HashSet<string> _ruleNotes = new(StringComparer.Ordinal);
     private readonly DateTime _deadline;
     private long _current;
+    private int _refusals;
 
     public UiScriptRunner(UiOp op, UiScript script, IReadOnlyList<DialogRule> rules, int pid, string runDir, string? screenshotsOverride, TimeSpan overall, IReadOnlyDictionary<string, string>? vars)
     {
@@ -96,89 +98,136 @@ public sealed class UiScriptRunner
     public UiScriptReport Run(IReadOnlyList<string> warnings)
     {
         Directory.CreateDirectory(_runDir);
-        var startWindow = _vars.Expand(_script.Window);
-        _current = (string.IsNullOrWhiteSpace(startWindow)
-            ? new WindowSpec { Pid = _pid }.Resolve()
-            : _ui.ResolveWindow(_op, new WindowSpec { Pid = _pid, Window = startWindow })).Hwnd;
+        _current = new WindowSpec { Pid = _pid }.Resolve().Hwnd;
 
         var results = new List<UiStepResult>();
-        var roles = Roles();
-        int failed = 0;
         bool stop = false;
         foreach (var step in _script.Steps)
         {
             var label = step.Label;
-            var (role, optional) = roles[step.Number - 1];
+            var expected = ExpectedOf(step);
             if (stop || DateTime.UtcNow > _deadline)
             {
-                results.Add(new UiStepResult(step.Number, label, "SKIP", 0, string.Empty, stop ? string.Empty : "run time budget exhausted", string.Empty, role, "SKIP"));
+                results.Add(new UiStepResult(step.Number, label, "skipped", 0, string.Empty, expected, stop ? string.Empty : "run time budget exhausted", string.Empty, step.Optional));
                 continue;
             }
 
             var sw = Stopwatch.StartNew();
-            string status = "PASS", output = string.Empty, error = string.Empty, shot = string.Empty;
+            string status = "passed", observed = string.Empty, error = string.Empty, shot = string.Empty;
             int before = _handled.Count;
+            int refusals = _refusals;
             try
             {
-                output = Execute(step);
+                observed = Execute(step);
             }
             catch (OperationCanceledException)
             {
                 throw;
             }
+            catch (ExpectationNotMet ex)
+            {
+                status = "failed";
+                observed = ex.Observed;
+                error = ex.Message;
+            }
             catch (GatewayException ex)
             {
-                status = "FAIL";
+                status = ex.Code == GatewayErrorCodes.PermissionDenied ? "blocked" : "failed";
                 error = ex.Message;
             }
             catch (Exception ex)
             {
                 // Any other failure fails the step (never the whole run, so the report is always written).
-                status = "FAIL";
+                status = "failed";
                 error = UiaCore.Translate(ex)?.Message ?? $"{ex.GetType().Name}: {ex.Message}";
             }
 
             sw.Stop();
+            if (status == "failed" && _refusals > refusals)
+            {
+                status = "blocked"; // a forbidden dialog is in the way and was left for a human
+            }
+
             if (_handled.Count > before)
             {
-                output = string.Join("\n", _handled.Skip(before).Append(output)).Trim();
+                observed = string.Join("\n", _handled.Skip(before).Append(observed)).Trim();
             }
 
-            if (_shots == "each" || (status == "FAIL" && _shots != "none"))
+            if (_shots == "each" || (status is "failed" or "blocked" && _shots != "none"))
             {
-                shot = SaveShot(Path.Combine(_runDir, $"{step.Number:D2}_{status.ToLowerInvariant()}.png")) ?? string.Empty;
+                shot = SaveShot(Path.Combine(_runDir, $"{step.Number:D2}_{status}.png")) ?? string.Empty;
             }
 
-            if (status == "FAIL")
+            if (status is "failed" or "blocked")
             {
-                failed++;
-                WriteFailSnapshot(Path.Combine(_runDir, $"{step.Number:D2}_fail_snapshot.txt"));
-                if (!(_script.ContinueOnError || step.Flag("continueOnError")))
+                WriteFailSnapshot(Path.Combine(_runDir, $"{step.Number:D2}_{status}_snapshot.txt"));
+                if (!step.Optional)
                 {
                     stop = true;
                 }
             }
 
-            results.Add(new UiStepResult(step.Number, label, status, sw.ElapsedMilliseconds, output, error, shot, role, Outcome(role, optional, status, error)));
+            results.Add(new UiStepResult(step.Number, label, status, sw.ElapsedMilliseconds, observed, expected, error, shot, step.Optional));
         }
 
+        int Count(string status, bool optional) => results.Count(r => r.Status == status && r.Optional == optional);
+        var blocked = Count("blocked", false);
+        var failed = Count("failed", false);
         var report = new UiScriptReport
         {
             Name = _script.Name,
             File = _script.Path,
-            Verdict = failed == 0 ? "PASSED" : "FAILED",
-            Passed = results.Count(r => r.Status == "PASS"),
+            Verdict = blocked > 0 ? "blocked" : failed > 0 ? "failed" : "passed",
+            Passed = results.Count(r => r.Status == "passed"),
             Failed = failed,
-            Skipped = results.Count(r => r.Status == "SKIP"),
+            Blocked = blocked,
+            OptionalFailed = Count("failed", true) + Count("blocked", true),
+            Skipped = results.Count(r => r.Status == "skipped"),
             Seconds = Math.Round(results.Sum(r => r.Ms) / 1000.0, 1),
             Time = DateTime.Now.ToString("s", CultureInfo.InvariantCulture),
             Steps = results,
-            Measured = results.Any(r => r.Outcome == "FAIL") ? "FAILED" : results.Any(r => r.Outcome == "BLOCK") ? "BLOCKED" : "SUCCEEDED",
             RunDir = _runDir,
             Warnings = warnings,
         };
         WriteReports(report);
         return report;
+    }
+
+    /// <summary>Human-readable expectation of an expect / wait step (empty for other steps).</summary>
+    private static string ExpectedOf(UiScriptStep st)
+    {
+        if (st.Action == "wait")
+        {
+            return "state " + (st.Raw("state") ?? "appears");
+        }
+
+        if (st.Action != "expect")
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+        if (st.Raw("is") is { Length: > 0 } i)
+        {
+            parts.Add("is " + i);
+        }
+
+        if (st.Has("text"))
+        {
+            parts.Add($"text {(st.Flag("exact") ? "==" : "contains")} '{st.Raw("text")}'");
+        }
+
+        if (st.Raw("match") is { Length: > 0 } m)
+        {
+            parts.Add($"text matches /{m}/");
+        }
+
+        if (st.Has("count"))
+        {
+            parts.Add("count == " + st.Raw("count"));
+        }
+
+        return string.Join("; ", parts);
     }
 
     // ---------------------------------------------------------------- dispatch
@@ -187,20 +236,24 @@ public sealed class UiScriptRunner
     {
         var remaining = (int)Math.Max(0, (_deadline - DateTime.UtcNow).TotalSeconds);
         var s = new StepArgs(st, _vars, _script.TimeoutSeconds, remaining);
-        switch (s.Do)
+        switch (s.Action)
         {
-            case "sleep":
+            case "pause":
                 _op.Sleep(Math.Clamp(st.Int("ms") ?? 500, 0, 600_000));
-                return "slept";
-            case "run":
-            case "launch":
-                throw GatewayException.Denied($"'{s.Do}' is not allowed in a UI script");
-            case "windows":
-                return string.Join("\n", TopLevelWindows.List(_pid).Select(w =>
-                    $"{(w.Hwnd == _current ? '*' : ' ')} {w.HwndHex,-11} pid={w.ProcessId,-7} {w.ProcessName,-20} \"{UiText.Clip(w.Title, 100)}\"{(w.Owner != 0 ? $"  (owned by {UiText.Hex(w.Owner)})" : string.Empty)}{(w.IsDialogClass ? "  [dialog]" : string.Empty)}"));
-            case "use":
+                return "paused";
+            case "list_windows":
+                return string.Join("\n", TopLevelWindows.List(_pid)
+                    .Where(w => s.Title is null || w.Title.Contains(s.Title, StringComparison.OrdinalIgnoreCase))
+                    .Select(w =>
+                        $"{(w.Hwnd == _current ? '*' : ' ')} {w.HwndHex,-11} pid={w.ProcessId,-7} {w.ProcessName,-20} \"{UiText.Clip(w.Title, 100)}\"{(w.Owner != 0 ? $"  (owned by {UiText.Hex(w.Owner)})" : string.Empty)}{(w.IsDialogClass ? "  [dialog]" : string.Empty)}"));
+            case "attach":
             {
-                var w = _ui.ResolveWindow(_op, new WindowSpec { Pid = _pid, Window = s.Window ?? s.Target });
+                if (s.Window is null)
+                {
+                    throw GatewayException.Validation("attach needs 'window' (title substring, /regex/ or hwnd:0x..)");
+                }
+
+                var w = _ui.ResolveWindow(_op, new WindowSpec { Pid = _pid, Window = s.Window });
                 _current = w.Hwnd;
                 return $"current window: {w.HwndHex} \"{w.Title}\" ({w.ProcessName})";
             }
@@ -215,84 +268,50 @@ public sealed class UiScriptRunner
                 return JsonSerializer.Serialize(UiActions.Inspect(_op, t), GatewayJson.Options);
             }
 
-            case "text":
-            {
-                var t = Resolve(s, needEnabled: false, allowWindow: true);
-                return UiActions.AllText(_op, t.Element, TimeSpan.FromSeconds(Math.Max(1, s.Limit ?? 15)));
-            }
-
-            case "point":
-                return Point(s);
             case "screenshot":
                 return Screenshot(s);
             case "click":
-                return Click(s, "left", dbl: false);
-            case "dblclick":
-                return Click(s, "left", dbl: true);
-            case "rightclick":
-                return Click(s, "right", dbl: false);
-            case "hover":
-            {
-                var t = Resolve(s, needEnabled: false);
-                UiSafety.EnsureActionAllowed(_op, t.Window);
-                InputSender.EnsureForeground(t.Window.Handle, _pid, "hover", _op.Token);
-                var p = UiActions.ClickPoint(_op, t);
-                InputSender.MoveTo(p.X, p.Y, _pid, _op.Token);
-                return $"hovering {t.Node.Describe()} at {p.X},{p.Y}";
-            }
-
+                return Click(s);
             case "type":
                 return TypeStep(s);
             case "keys":
                 return Keys(s);
-            case "focus":
-            {
-                var t = Resolve(s, needEnabled: true);
-                UiSafety.EnsureActionAllowed(_op, t.Window);
-                UiActions.TryActivate(t.Window, _op.Token);
-                UiActions.FocusElement(_op, t.Wrap(_op.Core));
-                return $"focused {t.Node.Describe()}";
-            }
-
             case "toggle":
             {
                 var t = Resolve(s, needEnabled: true);
-                string? state = s.Text is { Length: > 0 } x ? (x.ToLowerInvariant() is "on" or "true" or "1" or "checked" ? "on" : "off") : null;
-                var r = UiActions.Toggle(_op, t, state);
+                var r = UiActions.Toggle(_op, t, s.State);
                 return $"{t.Node.Describe()} -> {r["state"]}";
             }
 
             case "expand":
-            case "collapse":
             {
                 var t = Resolve(s, needEnabled: true);
-                var r = UiActions.Expand(_op, t, s.Do == "collapse");
+                var r = UiActions.Expand(_op, t, s.Flag("collapse"));
                 return $"{r["action"]} {t.Node.Describe()}";
             }
 
             case "select":
             {
+                if (s.Item is not null && s.Index is not null)
+                {
+                    throw GatewayException.Validation("select: pass either item or index, not both");
+                }
+
                 var t = Resolve(s, needEnabled: true);
-                var r = UiActions.Select(_op, t, string.IsNullOrEmpty(s.Text) ? null : s.Text, null);
+                var r = UiActions.Select(_op, t, s.Item, s.Index);
                 return $"selected {r["item"]} in {t.Node.Describe()}{(r.TryGetValue("value", out var v) && v is not null ? $" -> value=\"{v}\"" : string.Empty)}";
             }
 
             case "scroll":
                 return Scroll(s);
-            case "drag":
-                return Drag(s);
-            case "close":
-                return Close(s);
             case "wait":
                 return Wait(s);
             case "expect":
                 return Expect(s);
-            case "table":
+            case "read_table":
                 return Table(s);
-            case "dialogs":
-                return Dialogs(s);
             default:
-                throw GatewayException.Validation($"step has unknown 'do' value '{s.Do}'");
+                throw GatewayException.Validation($"step has unknown action '{s.Action}'");
         }
     }
 
@@ -302,10 +321,10 @@ public sealed class UiScriptRunner
         _current = t.Window.Hwnd;
         var snap = TreeSnapshot.Take(_op.Core, t.Element, new SnapshotOptions
         {
-            InteractiveOnly = s.Flag("interactive"),
-            MaxDepth = s.Depth ?? 25,
-            MaxNodes = s.Max ?? 500,
-            IncludeOffscreen = s.Flag("all"),
+            InteractiveOnly = !s.Has("interactive_only") || s.Flag("interactive_only"),
+            MaxDepth = s.MaxDepth ?? 25,
+            MaxNodes = s.MaxNodes ?? 400,
+            IncludeOffscreen = s.Flag("include_offscreen"),
             Raw = s.Flag("raw"),
             Budget = TimeSpan.FromSeconds(30),
         }, i => "e" + i, _op.Token);
@@ -332,8 +351,8 @@ public sealed class UiScriptRunner
 
     private string Find(StepArgs s)
     {
-        var selector = s.Selector ?? throw GatewayException.Validation("find needs a selector target, e.g. \"type=Button\"");
-        var (window, found) = _ui.FindAll(_op, s.Spec(this), selector, int.MaxValue, TimeSpan.FromSeconds(Math.Max(1, s.Limit ?? 15)), s.Flag("all"));
+        var selector = s.Selector ?? throw GatewayException.Validation("find needs a 'selector', e.g. \"type=Button\"");
+        var (window, found) = _ui.FindAll(_op, s.Spec(this), selector, int.MaxValue, TimeSpan.FromSeconds(Math.Max(1, s.Timeout)), s.Flag("include_offscreen"));
         _current = window.Hwnd;
         if (found.Matches.Count == 0)
         {
@@ -341,57 +360,32 @@ public sealed class UiScriptRunner
         }
 
         var set = _ui.Refs.GetOrCreate(_op.Session, window);
-        var lines = found.Matches.Take(40).Select(e =>
+        var max = Math.Clamp(s.Limit ?? 20, 1, 100);
+        var lines = found.Matches.Take(max).Select(e =>
         {
             var n = _op.Core.ReadLive(e);
             var r = _ui.AddRef(set, n);
             return TreeSnapshot.FormatNode(n, r, 0, null);
         }).ToList();
-        if (found.Matches.Count > 40)
+        if (found.Matches.Count > max)
         {
-            lines.Add($"# ... {found.Matches.Count - 40} more; refine the selector");
+            lines.Add($"# ... {found.Matches.Count - max} more; refine the selector or raise limit");
         }
 
         return string.Join("\n", lines);
     }
 
-    private string Point(StepArgs s)
-    {
-        if (s.X is not { } x || s.Y is not { } y || x < 0 || y < 0)
-        {
-            throw GatewayException.Validation("point needs x and y (physical screen pixels)");
-        }
-
-        var h = NativeMethods.WindowFromPoint(new NativeMethods.Point { X = x, Y = y });
-        var root = h == IntPtr.Zero ? IntPtr.Zero : NativeMethods.GetAncestor(h, NativeMethods.GaRoot);
-        if (root == IntPtr.Zero || NativeMethods.GetWindowProcessId(root) != _pid)
-        {
-            throw GatewayException.NotFound($"point {x},{y} is not over a window of process {_pid}");
-        }
-
-        var e = _op.Core.Native.ElementFromPoint(new tagPOINT { x = x, y = y })
-            ?? throw GatewayException.NotFound($"no UI Automation element at {x},{y}");
-        var n = _op.Core.ReadLive(e);
-        var sel = n.AutomationId.Length > 0 ? $"type={n.Type};id={n.AutomationId}" : n.Name.Length > 0 ? $"type={n.Type};name={n.Name}" : $"type={n.Type}";
-        return TreeSnapshot.FormatNode(n, null, 0, null) + $"\nwindow: {UiText.Hex(root.ToInt64())}   selector: \"{sel}\"";
-    }
-
     private string Screenshot(StepArgs s)
     {
-        if (string.Equals(s.Target, "screen", StringComparison.OrdinalIgnoreCase))
-        {
-            throw GatewayException.Validation("screenshot of the whole screen is not supported (it would capture other applications); capture the window or an element");
-        }
-
-        var path = OutputPath(s.Out, $"shot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
+        var path = OutputPath(s.SavePath, $"shot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
         var t = Resolve(s, needEnabled: false, allowWindow: true);
         if (NativeMethods.IsIconic(t.Window.Handle))
         {
             throw GatewayException.NotReady($"window \"{UiText.Clip(t.Window.Title, 60)}\" is minimized; cannot capture it");
         }
 
-        using var full = (s.Flag("fromscreen") ? WindowCapture.CaptureWindowFromScreen(t.Window.Handle) : WindowCapture.CaptureWindow(t.Window.Handle))
-            ?? throw GatewayException.NotReady("window has no size (hidden or minimized?)");
+        using var full = WindowCapture.CaptureWindow(t.Window.Handle)
+            ?? throw GatewayException.NotReady("window printed blank or has no size (hidden, minimized, or a canvas PrintWindow cannot render); use the ui_screenshot tool or view_export_image");
         System.Drawing.Bitmap shot = full;
         System.Drawing.Bitmap? crop = null;
         if (!t.IsWindow && _op.Core.ReadLive(t.Element).Bounds is { } b)
@@ -411,18 +405,29 @@ public sealed class UiScriptRunner
         }
     }
 
-    private string Click(StepArgs s, string button, bool dbl)
+    private string Click(StepArgs s)
     {
-        if (s.Target is null && s.X is { } x && s.Y is { } y && x >= 0 && y >= 0)
+        var button = (s.Button ?? "left").ToLowerInvariant();
+        if (button is not ("left" or "right" or "middle"))
         {
-            // click x/y in a script: screen pixels. Converted to window-relative and confined to the current window.
+            throw GatewayException.Validation("click: button must be left, right or middle");
+        }
+
+        var dbl = s.Flag("double");
+        if (s.Ref is null && s.Selector is null && (s.X is not null || s.Y is not null))
+        {
+            if (s.X is not { } x || s.Y is not { } y || x < 0 || y < 0)
+            {
+                throw GatewayException.Validation("click: pass both x and y (window pixels)");
+            }
+
             var w = _ui.ResolveWindow(_op, s.Spec(this));
-            UiActions.ClickAt(_op, w, x - w.Left, y - w.Top, button, dbl);
+            UiActions.ClickAt(_op, w, x, y, button, dbl);
             return $"clicked at {x},{y}";
         }
 
-        bool mouse = s.Flag("mouse") || dbl || button != "left";
-        var t = Resolve(s, needEnabled: !mouse);
+        bool mouse = s.Flag("mouse");
+        var t = Resolve(s, needEnabled: !mouse && !dbl && button == "left");
         var r = UiActions.Click(_op, t, button, dbl, mouse);
         var what = r["action"] switch
         {
@@ -438,11 +443,11 @@ public sealed class UiScriptRunner
         var text = clear ? string.Empty : s.Text;
         if (!clear && !s.TextGiven)
         {
-            throw GatewayException.Validation("type needs \"text\" (or \"clear\": true)");
+            throw GatewayException.Validation("type needs 'text' (or clear: true)");
         }
 
         text ??= string.Empty;
-        if (s.Target is null)
+        if (s.Ref is null && s.Selector is null)
         {
             var w = _ui.ResolveWindow(_op, s.Spec(this));
             UiActions.TypeIntoFocused(_op, w, text);
@@ -450,7 +455,7 @@ public sealed class UiScriptRunner
         }
 
         var t = Resolve(s, needEnabled: true);
-        var r = UiActions.Type(_op, t, text, s.Flag("keyboard") || clear, s.Flag("append"), s.Flag("verify"));
+        var r = UiActions.Type(_op, t, text, s.Flag("keyboard"), !clear && s.Flag("append"), s.Flag("verify"));
         return r["action"] switch
         {
             "set_value" => $"set value of {t.Node.Describe()} -> \"{UiText.Clip(r["value"] as string, 120)}\"",
@@ -461,17 +466,34 @@ public sealed class UiScriptRunner
 
     private string Keys(StepArgs s)
     {
-        var keys = s.Target ?? s.Text;
+        var keys = s.Keys;
         if (string.IsNullOrEmpty(keys))
         {
-            throw GatewayException.Validation("keys needs a key string, e.g. \"^s\" or \"{ENTER}\"");
+            throw GatewayException.Validation("keys needs 'keys', e.g. \"^s\" or \"{ENTER}\"");
         }
 
         var strokes = InputSender.ParseSendKeys(keys);
-        var w = _ui.ResolveWindow(_op, s.Spec(this));
+        UiTarget? t = null;
+        TopLevelWindow w;
+        if (s.Ref is not null || s.Selector is not null)
+        {
+            t = Resolve(s, needEnabled: true);
+            w = t.Window;
+        }
+        else
+        {
+            w = _ui.ResolveWindow(_op, s.Spec(this));
+        }
+
         UiSafety.EnsureActionAllowed(_op, w);
         UiActions.EnsureAltF4Safe(_op, strokes, w);
         InputSender.EnsureForeground(w.Handle, _pid, "keys", _op.Token);
+        if (t is not null)
+        {
+            UiActions.FocusElement(_op, t.Wrap(_op.Core));
+            UiActions.EnsureFocusWithin(_op, t);
+        }
+
         UiActions.EnsureAltF4Safe(_op, strokes, w, afterActivation: true);
         InputSender.SendStrokes(strokes, _pid, _op.Token);
         return $"sent keys {keys} to \"{UiText.Clip(w.Title, 60)}\"";
@@ -480,90 +502,47 @@ public sealed class UiScriptRunner
     private string Scroll(StepArgs s)
     {
         var t = Resolve(s, needEnabled: false);
-        var spec = (s.Text ?? "down").Trim().ToLowerInvariant();
-        var dir = spec;
-        int count = 1;
-        var m = Regex.Match(spec, "^(\\w+)\\s+(\\d+)$");
-        if (m.Success)
-        {
-            dir = m.Groups[1].Value;
-            count = int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
-        }
-
-        var r = UiActions.Scroll(_op, t, dir, Math.Clamp(count, 1, 100));
+        var dir = (s.Direction ?? "down").Trim().ToLowerInvariant();
+        var count = Math.Clamp(s.Amount ?? 1, 1, 100);
+        var r = UiActions.Scroll(_op, t, dir, count);
         return r.TryGetValue("vertical_percent", out var v)
             ? $"scrolled {dir} x{count} -> h={r["horizontal_percent"]}% v={v}%"
             : $"{r["action"]} {dir}";
     }
 
-    private string Drag(StepArgs s)
-    {
-        var a = Resolve(s, needEnabled: true);
-        if (string.IsNullOrEmpty(s.Text))
-        {
-            throw GatewayException.Validation("drag needs \"text\" = the destination (ref or selector)");
-        }
-
-        var b = Selector.LooksLikeRef(s.Text)
-            ? _ui.ResolveTarget(_op, s.Spec(this), s.Text, null, allowWindow: false)
-            : _ui.ResolveTarget(_op, s.Spec(this), null, s.Text, allowWindow: false);
-        UiSafety.EnsureActionAllowed(_op, a.Window);
-        UiSafety.EnsureActionAllowed(_op, b.Window);
-        InputSender.EnsureForeground(a.Window.Handle, _pid, "drag", _op.Token);
-        var p1 = UiActions.ClickPoint(_op, a);
-        var p2 = UiActions.ClickPoint(_op, b);
-        InputSender.Drag(p1.X, p1.Y, p2.X + (s.OffsetX ?? 0), p2.Y + (s.OffsetY ?? 0), _pid, _op.Token);
-        return $"dragged {a.Node.Describe()} -> {b.Node.Describe()} - re-read the list or value to confirm the drop took effect";
-    }
-
-    private string Close(StepArgs s)
-    {
-        var t = Resolve(s, needEnabled: false, allowWindow: true, wait: false);
-        var w = t.Window;
-        UiSafety.EnsureActionAllowed(_op, w);
-        if (_ui.IsMainWindow(w))
-        {
-            throw GatewayException.Denied($"close would close the host application's main window \"{UiText.Clip(w.Title, 60)}\"");
-        }
-
-        var el = _op.Core.Wrap(_op.Core.FromHandle(w.Hwnd));
-        if (!el.Patterns.Window.TryGetPattern(out var wp))
-        {
-            throw GatewayException.Validation($"\"{w.Title}\" is not a window");
-        }
-
-        // An open dropdown/popup owned by the window swallows the close request: dismiss it with Esc first.
-        var popups = TopLevelWindows.List(_pid).Where(o => o.Owner == w.Hwnd && o.Title.Length == 0).ToList();
-        if (popups.Count > 0 && InputSender.Activate(w.Handle, _pid, _op.Token))
-        {
-            InputSender.SendStrokes(InputSender.ParseSendKeys("{ESC}"), _pid, _op.Token);
-            _op.Sleep(300);
-        }
-
-        return UiActions.Bounded(_op, () => wp.Close(), 3000)
-            ? $"closed \"{w.Title}\" (if it asked to save, a dialog is now open - run 'windows')"
-            : $"close requested for \"{w.Title}\" (still blocked - a save prompt may be showing)";
-    }
-
     private string Wait(StepArgs s)
     {
-        if (s.Target is null && s.Window is null)
+        var state = (s.State ?? "appears").ToLowerInvariant();
+        if (state is not ("appears" or "gone" or "enabled"))
         {
-            throw GatewayException.Validation("wait needs a target and/or window");
+            throw GatewayException.Validation("wait: state must be appears, gone or enabled");
         }
 
-        bool gone = s.Flag("gone");
+        bool element = s.Ref is not null || s.Selector is not null;
+        if (!element && s.Window is null)
+        {
+            throw GatewayException.Validation("wait needs a ref/selector (element) or a window");
+        }
+
+        if (!element && state == "enabled")
+        {
+            throw GatewayException.Validation("wait: state=enabled needs a ref or selector");
+        }
+
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(s.Timeout);
         while (true)
         {
             _op.Token.ThrowIfCancellationRequested();
+            RunDialogRules();
             UiTarget? t = null;
             TopLevelWindow? w = null;
             try
             {
-                if (s.Target is not null)
+                if (element)
                 {
-                    t = s.IsRef ? _ui.ResolveTarget(_op, s.Spec(this), s.Target, null, false) : _ui.ResolveTarget(_op, s.Spec(this), null, s.Selector, false, TimeSpan.FromSeconds(5));
+                    t = s.Ref is not null
+                        ? _ui.ResolveTarget(_op, s.Spec(this), s.Ref, null, false)
+                        : _ui.ResolveTarget(_op, s.Spec(this), null, s.Selector, false, TimeSpan.FromSeconds(5));
                 }
                 else
                 {
@@ -579,9 +558,10 @@ public sealed class UiScriptRunner
             }
 
             bool found = t is not null || w is not null;
-            if (found != gone)
+            bool ok = state switch { "gone" => !found, "enabled" => t is not null && t.Node.Enabled, _ => found };
+            if (ok)
             {
-                if (gone)
+                if (state == "gone")
                 {
                     return "gone";
                 }
@@ -592,12 +572,12 @@ public sealed class UiScriptRunner
                     return $"window ready (now current): {w.HwndHex} \"{w.Title}\"";
                 }
 
-                return $"found {t!.Node.Describe()}";
+                return $"{state}: {t!.Node.Describe()}";
             }
 
             if (DateTime.UtcNow > deadline)
             {
-                throw new GatewayException(GatewayErrorCodes.Timeout, $"timed out after {s.Timeout} s");
+                throw new GatewayException(GatewayErrorCodes.Timeout, $"timed out after {s.Timeout} s waiting for state '{state}' (last seen: {(found ? "present" : "not found")})");
             }
 
             _op.Sleep(300);
@@ -606,46 +586,58 @@ public sealed class UiScriptRunner
 
     private string Expect(StepArgs s)
     {
-        if (s.Target is null && s.Window is null)
+        if (s.Ref is null && s.Selector is null && s.Window is null)
         {
-            throw GatewayException.Validation("expect needs a target or window");
+            throw GatewayException.Validation("expect needs a ref/selector or a window");
         }
 
         var e = new UiActions.Expectation(s.Is, s.TextGiven ? s.Text ?? string.Empty : null, s.Flag("exact"), s.Match, s.Count is { } c && c >= 0 ? c : null);
-        var spec = s.Target is null ? new WindowSpec { Pid = _pid, Window = s.Window } : s.Spec(this);
+        var spec = s.Ref is null && s.Selector is null ? new WindowSpec { Pid = _pid, Window = s.Window } : s.Spec(this);
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(s.Timeout);
         while (true)
         {
             RunDialogRules();
-            var o = UiActions.Evaluate(_op, spec, s.IsRef ? s.Target : null, s.IsRef ? null : s.Selector, e);
+            var o = UiActions.Evaluate(_op, spec, s.Ref, s.Selector, e);
             if (o.Pass)
             {
-                return "PASS: " + o.Message;
+                return o.Message;
             }
 
             if (DateTime.UtcNow >= deadline)
             {
-                throw new GatewayException(GatewayErrorCodes.NotFound, $"FAIL: {o.Message} (waited {s.Timeout}s)");
+                throw new ExpectationNotMet(o.Message, $"expectation not met after {s.Timeout}s");
             }
 
             _op.Sleep(250);
         }
     }
 
+    /// <summary>An expect step whose condition never held: the last observation is the step's observed value.</summary>
+    private sealed class ExpectationNotMet : Exception
+    {
+        public ExpectationNotMet(string observed, string message)
+            : base(message)
+        {
+            Observed = observed;
+        }
+
+        public string Observed { get; }
+    }
+
     private string Table(StepArgs s)
     {
-        if (s.Target is null)
+        if (s.Ref is null && s.Selector is null)
         {
-            throw GatewayException.Validation("table needs a target (the grid/list/table element)");
+            throw GatewayException.Validation("read_table needs a ref or selector (the grid/list/table element)");
         }
 
         var t = Resolve(s, needEnabled: false);
-        var r = UiActions.ReadTable(_op, t, Math.Clamp(s.Max ?? 500, 1, 5000));
+        var r = UiActions.ReadTable(_op, t, Math.Clamp(s.Limit ?? 100, 1, 2000));
         var headers = (List<string>)r["headers"]!;
         var rows = (List<List<string>>)r["rows"]!;
-        if (s.Out is not null)
+        if (s.SavePath is not null)
         {
-            var path = OutputPath(s.Out, "table.csv");
+            var path = OutputPath(s.SavePath, "table.csv");
             static string Q(string v) => "\"" + v.Replace("\"", "\"\"") + "\"";
             var sb = new StringBuilder();
             if (headers.Count > 0)
@@ -663,7 +655,7 @@ public sealed class UiScriptRunner
         }
 
         var md = new StringBuilder();
-        md.AppendLine($"# {rows.Count} rows (source: {r["source"]}){(r["more"] is true ? " - more rows not shown; raise max" : string.Empty)}");
+        md.AppendLine($"# {rows.Count} rows (source: {r["source"]}){(r["more"] is true ? " - more rows not shown; raise limit" : string.Empty)}");
         if (headers.Count > 0)
         {
             md.AppendLine("| " + string.Join(" | ", headers.Select(h => UiText.Clip(h, 40))) + " |");
@@ -676,38 +668,6 @@ public sealed class UiScriptRunner
         }
 
         return md.ToString().TrimEnd();
-    }
-
-    private string Dialogs(StepArgs s)
-    {
-        if (_rules.Count == 0)
-        {
-            throw GatewayException.Validation("dialogs needs dialog rules (\"dialogs\" in the script)");
-        }
-
-        int before = _handled.Count;
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(s.Timeout);
-        do
-        {
-            if (RunDialogRules() == 0)
-            {
-                _op.Sleep(400);
-            }
-        }
-        while (DateTime.UtcNow < deadline);
-
-        var lines = new List<string>();
-        if (_handled.Count == before)
-        {
-            lines.Add("no matching dialogs appeared");
-        }
-
-        foreach (var o in TopLevelWindows.List(_pid).Where(w => w.IsDialogClass || w.Owner != 0))
-        {
-            lines.Add($"# still open: {o.HwndHex} \"{UiText.Clip(o.Title, 80)}\" ({o.ProcessName}) - no rule matched");
-        }
-
-        return string.Join("\n", lines);
     }
 
     // ---------------------------------------------------------------- dialog rules
@@ -743,6 +703,7 @@ public sealed class UiScriptRunner
                     var text = UiActions.AllText(_op, _op.Core.FromHandle(w.Hwnd), TimeSpan.FromSeconds(3));
                     if (text.Contains("[... truncated", StringComparison.Ordinal))
                     {
+                        _refusals++;
                         Note($"refused to auto-answer dialog \"{w.Title}\": its text could not be read completely (a human must answer it)");
                         continue;
                     }
@@ -751,6 +712,7 @@ public sealed class UiScriptRunner
                     var verdict = RevitAgent.Core.Revit.DialogSafety.Classify(w.Title, lines);
                     if (verdict.IsForbidden || UiScriptValidator.ForbiddenWord(w.Title + " " + text) is not null)
                     {
+                        _refusals++;
                         Note($"refused to auto-answer dialog \"{w.Title}\" ({verdict.Reason ?? "contains a forbidden word"}): security / license / sign-in / recovery / delete / overwrite dialogs need a human");
                         continue;
                     }
@@ -820,11 +782,16 @@ public sealed class UiScriptRunner
     private UiTarget Resolve(StepArgs s, bool needEnabled, bool allowWindow = false, bool wait = true)
     {
         var spec = s.Spec(this);
-        string? reference = s.IsRef ? s.Target : null;
-        string? selector = s.IsRef ? null : s.Selector;
+        string? reference = s.Ref;
+        string? selector = s.Selector;
+        if (reference is not null && selector is not null)
+        {
+            throw GatewayException.Validation("Pass either 'ref' or 'selector', not both.");
+        }
+
         if (reference is null && selector is null && !allowWindow)
         {
-            throw GatewayException.Validation("Missing target. Use a ref from snapshot (e.g. e12) or a selector (e.g. \"name=OK;type=Button\").");
+            throw GatewayException.Validation("Missing target. Use a 'ref' from snapshot (e.g. e12) or a 'selector' (e.g. \"name=OK;type=Button\").");
         }
 
         return wait
@@ -893,46 +860,6 @@ public sealed class UiScriptRunner
         }
     }
 
-    /// <summary>UiStep Get-UiStepRoles: nav = steps on the host's main window, check = steps on add-in windows.</summary>
-    private List<(string Role, bool Optional)> Roles()
-    {
-        var list = new List<(string, bool)>();
-        var cur = MainMarker;
-        foreach (var st in _script.Steps)
-        {
-            var w = st.Raw("window");
-            var eff = string.IsNullOrWhiteSpace(w) ? cur : w!;
-            var role = st.Raw("role") is "nav" or "check" ? st.Raw("role")! : eff == MainMarker ? "nav" : "check";
-            var gone = st.Flag("gone") || string.Equals(st.Raw("is"), "gone", StringComparison.OrdinalIgnoreCase);
-            list.Add((role, st.Flag("continueOnError") || _script.ContinueOnError));
-            if (gone)
-            {
-                if (eff == cur)
-                {
-                    cur = MainMarker;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(w) && st.Do is "use" or "wait" or "snapshot" or "find")
-            {
-                cur = w!;
-            }
-        }
-
-        return list;
-    }
-
-    /// <summary>UiStep Get-UiStepOutcome: FAIL only when the add-in misbehaved; navigation/layout failures are BLOCK (or WARN when optional).</summary>
-    private static string Outcome(string role, bool optional, string status, string error)
-    {
-        if (status != "FAIL")
-        {
-            return status;
-        }
-
-        bool notProduct = role == "nav" || LayoutError.IsMatch(error);
-        return !notProduct ? "FAIL" : optional ? "WARN" : "BLOCK";
-    }
-
     private void WriteReports(UiScriptReport report)
     {
         var json = new
@@ -942,21 +869,22 @@ public sealed class UiScriptRunner
             verdict = report.Verdict,
             passed = report.Passed,
             failed = report.Failed,
+            blocked = report.Blocked,
+            optional_failed = report.OptionalFailed,
             skipped = report.Skipped,
             seconds = report.Seconds,
             time = report.Time,
-            measured = report.Measured,
-            steps = report.Steps.Select(r => new { n = r.N, step = r.Step, status = r.Status, ms = r.Ms, output = r.Output, error = r.Error, screenshot = r.Screenshot, role = r.Role, outcome = r.Outcome }),
+            steps = report.Steps.Select(r => new { n = r.N, step = r.Step, status = r.Status, optional = r.Optional, ms = r.Ms, observed = r.Observed, expected = r.Expected, error = r.Error, screenshot = r.Screenshot }),
         };
         File.WriteAllText(Path.Combine(_runDir, "report.json"), JsonSerializer.Serialize(json, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }), new UTF8Encoding(false));
 
         var md = new StringBuilder();
         md.AppendLine($"# {report.Name} - {report.Verdict}").AppendLine();
-        md.AppendLine($"{report.Passed} passed, {report.Failed} failed, {report.Skipped} skipped in {report.Seconds.ToString(CultureInfo.InvariantCulture)}s - {report.Time} (measured: {report.Measured})").AppendLine();
+        md.AppendLine($"{report.Passed} passed, {report.Failed} failed, {report.Blocked} blocked, {report.OptionalFailed} optional failed, {report.Skipped} skipped in {report.Seconds.ToString(CultureInfo.InvariantCulture)}s - {report.Time}").AppendLine();
         md.AppendLine("| # | Status | Step | Time | Details |").AppendLine("|---|---|---|---|---|");
         foreach (var r in report.Steps)
         {
-            var det = UiText.Clip(r.Error.Length > 0 ? r.Error : r.Output, 160).Replace("|", "\\|");
+            var det = UiText.Clip(r.Error.Length > 0 ? r.Error : r.Observed, 160).Replace("|", "\\|");
             if (r.Screenshot.Length > 0)
             {
                 det += $" ![]({Path.GetFileName(r.Screenshot)})";
@@ -968,57 +896,47 @@ public sealed class UiScriptRunner
         File.WriteAllText(Path.Combine(_runDir, "report.md"), md.ToString(), new UTF8Encoding(false));
     }
 
-    /// <summary>Expanded options of one step .</summary>
+    /// <summary>Expanded options of one step (the argument names of the matching ui_* tool).</summary>
     private sealed class StepArgs
     {
         private readonly UiScriptStep _st;
+        private readonly UiScriptVars _vars;
 
         public StepArgs(UiScriptStep st, UiScriptVars vars, int defaultTimeout, int maxTimeout)
         {
             _st = st;
-            Do = st.Do;
-            Target = Empty(vars.Expand(st.Raw("target")));
-            Window = Empty(vars.Expand(st.Raw("window")));
+            _vars = vars;
+            Action = st.Action;
+            Ref = Str("ref");
+            Selector = Str("selector");
+            Window = Str("window");
             TextGiven = st.Has("text");
             Text = vars.Expand(st.Raw("text"));
-            Is = Empty(vars.Expand(st.Raw("is")));
-            Match = Empty(vars.Expand(st.Raw("match")));
-            Out = Empty(vars.Expand(st.Raw("out")));
+            Is = Str("is");
+            Match = Str("match");
+            State = Str("state");
+            Item = Str("item");
+            Button = Str("button");
+            Keys = vars.Expand(st.Raw("keys"));
+            Direction = Str("direction");
+            Title = Str("title");
+            SavePath = Str("save_path");
             Count = st.Has("count") ? st.Int("count") : null;
+            Index = st.Int("index");
             X = st.Int("x");
             Y = st.Int("y");
-            Depth = st.Int("depth");
-            Max = st.Int("max");
+            Amount = st.Int("amount");
+            MaxDepth = st.Int("max_depth");
+            MaxNodes = st.Int("max_nodes");
             Limit = st.Int("limit");
-            OffsetX = st.Int("offsetx");
-            OffsetY = st.Int("offsety");
-            Timeout = Math.Clamp(st.Int("timeout") ?? defaultTimeout, 0, Math.Clamp(maxTimeout, 0, 600));
-            var within = Empty(vars.Expand(st.Raw("within")));
-            var from = Empty(vars.Expand(st.Raw("from")));
-            if (Target is not null && !IsRef)
-            {
-                var sel = Target;
-                if (within is not null && !sel.Contains("in=", StringComparison.OrdinalIgnoreCase))
-                {
-                    sel += ";in=\"" + within.Replace("\"", "\\\"") + "\"";
-                }
-
-                if (string.Equals(from, "end", StringComparison.OrdinalIgnoreCase))
-                {
-                    sel += ";from=end";
-                }
-
-                Selector = sel;
-            }
+            Timeout = Math.Clamp(st.Int("timeout_s") ?? defaultTimeout, 0, Math.Clamp(maxTimeout, 0, 600));
         }
 
-        public string Do { get; }
+        public string Action { get; }
 
-        public string? Target { get; }
+        public string? Ref { get; }
 
         public string? Selector { get; }
-
-        public bool IsRef => Target is not null && Ui.Selector.LooksLikeRef(Target);
 
         public string? Window { get; }
 
@@ -1030,25 +948,39 @@ public sealed class UiScriptRunner
 
         public string? Match { get; }
 
-        public string? Out { get; }
+        public string? State { get; }
+
+        public string? Item { get; }
+
+        public string? Button { get; }
+
+        public string? Keys { get; }
+
+        public string? Direction { get; }
+
+        public string? Title { get; }
+
+        public string? SavePath { get; }
 
         public int? Count { get; }
+
+        public int? Index { get; }
 
         public int? X { get; }
 
         public int? Y { get; }
 
-        public int? Depth { get; }
+        public int? Amount { get; }
 
-        public int? Max { get; }
+        public int? MaxDepth { get; }
+
+        public int? MaxNodes { get; }
 
         public int? Limit { get; }
 
-        public int? OffsetX { get; }
-
-        public int? OffsetY { get; }
-
         public int Timeout { get; }
+
+        public bool Has(string name) => _st.Has(name);
 
         public bool Flag(string name) => _st.Flag(name);
 
@@ -1057,6 +989,6 @@ public sealed class UiScriptRunner
             ? new WindowSpec { Pid = runner._pid, Window = Window }
             : new WindowSpec { Pid = runner._pid, Hwnd = runner.CurrentHwnd() };
 
-        private static string? Empty(string? s) => string.IsNullOrEmpty(s) ? null : s;
+        private string? Str(string name) => _vars.Expand(_st.Raw(name)) is { Length: > 0 } v ? v : null;
     }
 }

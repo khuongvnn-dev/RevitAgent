@@ -38,6 +38,7 @@ public class BridgeGatewayToolsTests
         ["command_list_postable"] = ToolPermission.Read,
         ["command_post"] = ToolPermission.Interact,
         ["view_activate"] = ToolPermission.Interact,
+        ["view_export_image"] = ToolPermission.Read,
         ["selection_get"] = ToolPermission.Read,
         ["selection_set"] = ToolPermission.Interact,
         ["dialog_list_events"] = ToolPermission.Read,

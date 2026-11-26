@@ -22,14 +22,14 @@ public sealed record RunFolder
 
     public DateTimeOffset StartedAt { get; init; }
 
-    public string Suite { get; init; } = string.Empty;
+    public string Scenario { get; init; } = string.Empty;
 
     public string Trigger { get; init; } = string.Empty;
 }
 
 public sealed record RunFilter
 {
-    public string? Suite { get; init; }
+    public string? Scenario { get; init; }
 
     public string? Verdict { get; init; }
 
@@ -44,7 +44,7 @@ public sealed record RunSummary
 {
     public string Id { get; init; } = string.Empty;
 
-    public string Suite { get; init; } = string.Empty;
+    public string Scenario { get; init; } = string.Empty;
 
     public string Trigger { get; init; } = "manual";
 

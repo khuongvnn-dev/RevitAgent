@@ -59,7 +59,7 @@ public class RunStoreIndexAndListTests
         {
             var root = indexDoc.RootElement;
             Assert.Equal(run.Id, root.GetProperty("id").GetString());
-            Assert.Equal("doors-audit", root.GetProperty("suite").GetString());
+            Assert.Equal("doors-audit", root.GetProperty("scenario").GetString());
             Assert.Equal("PASS", root.GetProperty("verdict").GetString());
             Assert.Contains(run.Id, root.GetProperty("run_dir").GetString()!);
             Assert.Contains("report.html", root.GetProperty("report_html").GetString()!);
@@ -124,8 +124,8 @@ public class RunStoreIndexAndListTests
         Assert.Equal(r2.Id, allRuns[1].GetProperty("id").GetString());
         Assert.Equal(r1.Id, allRuns[2].GetProperty("id").GetString());
 
-        // 2. Filter by suite substring "wall"
-        var wallRes = await listTool.ExecuteAsync(new ToolCall("runs_list", JsonSerializer.SerializeToElement(new { suite = "wall" }), "s"), CancellationToken.None);
+        // 2. Filter by scenario substring "wall"
+        var wallRes = await listTool.ExecuteAsync(new ToolCall("runs_list", JsonSerializer.SerializeToElement(new { scenario = "wall" }), "s"), CancellationToken.None);
         var wallRuns = wallRes.Structured!.Value.GetProperty("runs").EnumerateArray().ToArray();
         Assert.Equal(2, wallRuns.Length);
         Assert.Contains(wallRuns, r => r.GetProperty("id").GetString() == r1.Id);
@@ -163,6 +163,42 @@ public class RunStoreIndexAndListTests
         Assert.Equal(2, runs.Length);
         var crashedEntry = runs.Single(r => r.GetProperty("id").GetString() == r2.Id);
         Assert.Equal("RUNNING", crashedEntry.GetProperty("verdict").GetString());
+    }
+
+    [Fact]
+    public async Task LegacySuiteKey_InRunJsonAndIndex_IsReadAsScenario()
+    {
+        var (store, _) = Create();
+
+        // Record only in index.jsonl (old "suite" key).
+        var indexed = new JsonObject
+        {
+            ["id"] = "idx-old-1", ["suite"] = "old-indexed", ["verdict"] = "PASS",
+            ["started_at"] = DateTimeOffset.UtcNow.AddDays(-3).ToString("O"), ["run_dir"] = "idx-old-1",
+        };
+        File.WriteAllText(store.IndexFilePath, indexed.ToJsonString() + Environment.NewLine);
+
+        // Crash-style folder with only run.json carrying the old key.
+        var dir = Path.Combine(store.RootDir, "2026-01", "2026-01-02", "010203_old-folder_abc123");
+        Directory.CreateDirectory(dir);
+        var runJson = new JsonObject
+        {
+            ["id"] = "old-folder-1", ["suite"] = "old-folder", ["verdict"] = "FAIL",
+            ["started_at"] = DateTimeOffset.UtcNow.AddDays(-2).ToString("O"),
+        };
+        File.WriteAllText(Path.Combine(dir, "run.json"), runJson.ToJsonString());
+
+        var runs = store.ListRuns(new RevitAgent.Core.RunStore.RunFilter { Limit = 50 });
+        Assert.Contains(runs, r => r.Id == "idx-old-1" && r.Scenario == "old-indexed");
+        Assert.Contains(runs, r => r.Scenario == "old-folder");
+
+        var filtered = store.ListRuns(new RevitAgent.Core.RunStore.RunFilter { Scenario = "old-indexed" });
+        Assert.Single(filtered);
+
+        var listTool = new RunsListTool(store);
+        var res = await listTool.ExecuteAsync(new ToolCall("runs_list", JsonSerializer.SerializeToElement(new { scenario = "old-indexed" }), "s"), CancellationToken.None);
+        var row = res.Structured!.Value.GetProperty("runs").EnumerateArray().Single();
+        Assert.Equal("old-indexed", row.GetProperty("scenario").GetString());
     }
 
     [Fact]

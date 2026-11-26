@@ -19,7 +19,7 @@ public partial class ScenarioItemViewModel : ObservableObject
 
     public string Name => Item.Name;
 
-    public string Suite => Item.Suite;
+    public string ScenarioName => Item.ScenarioName;
 
     public string Directory => Item.Directory;
 

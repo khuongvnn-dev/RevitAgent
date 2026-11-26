@@ -194,11 +194,11 @@ public sealed class ScenarioListRunsTool : GatewayTool
 
         if (_runStore != null)
         {
-            var allRuns = _runStore.ListRuns(new RunStore.RunFilter { Suite = scenario, Verdict = verdict, Limit = 1000 });
+            var allRuns = _runStore.ListRuns(new RunStore.RunFilter { Scenario = scenario, Verdict = verdict, Limit = 1000 });
             var rows = allRuns.Select(r => new
             {
                 run_id = r.Id,
-                scenario = r.Suite,
+                scenario = r.Scenario,
                 verdict = r.Verdict,
                 started = r.StartedAt.ToString("O", CultureInfo.InvariantCulture),
                 ended = r.EndedAt?.ToString("O", CultureInfo.InvariantCulture),

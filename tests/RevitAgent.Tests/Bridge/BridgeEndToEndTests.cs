@@ -38,9 +38,9 @@ public class BridgeEndToEndTests
     }
 
     [Fact]
-    public async Task ConcurrentRevitCall_GetsBusyImmediately_ImmediateToolsStillAnswer()
+    public async Task ConcurrentRevitCall_GetsBusyAfterTheQueueWait_ImmediateToolsStillAnswer()
     {
-        using var h = new BridgeHarness();
+        using var h = new BridgeHarness(queueWait: TimeSpan.FromMilliseconds(300));
         var slow = h.Client.CallAsync(BridgeHarness.Pid, "slow", null, TimeSpan.FromSeconds(20), CancellationToken.None);
         await WaitUntil(() => h.Server.BusyTool == "slow");
 

@@ -41,7 +41,7 @@ public class ScenarioRunTests
             expect: 'no_line(run.log, "STOP ")'
         """;
 
-    private const string UiScript = """{ "name": "schedule", "steps": [ { "do": "click", "target": "id=ID_VIEW_TAB" }, { "do": "expect", "window": "Schedule Properties", "is": "gone" } ] }""";
+    private const string UiScript = """{ "name": "schedule", "steps": [ { "action": "click", "selector": "id=ID_VIEW_TAB" }, { "action": "expect", "window": "Schedule Properties", "is": "gone" } ] }""";
 
     /// <summary>scenario.yaml = metadata + steps, then the checks.</summary>
     private static string LevelsScenario(string? steps = null, string? checks = null) =>
@@ -303,7 +303,7 @@ public class ScenarioRunTests
     public async Task UiBlocked_ContinuesAndIsNotMeasurable()
     {
         await using var host = new ScenarioHost();
-        host.Revit.UiStatus = "BLOCKED";
+        host.Revit.UiStatus = "blocked";
         var s = await host.CallOkAsync("scenario_run", new { scenario_dir = LevelsScenario(), pid = FakeRevit.ExistingPid });
         Assert.Equal("SUSPECT", s.GetProperty("verdict").GetString());
         Assert.Equal(1, s.GetProperty("steps").GetProperty("blocked").GetInt32());

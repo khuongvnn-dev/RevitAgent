@@ -93,17 +93,10 @@ public sealed class ScenarioRecorder : IToolCallObserver
 
     public static readonly IReadOnlyList<string> ExcludedPrefixes = new[] { "recorder_", "scenario_", "gateway_" };
 
-    /// <summary>Tool-forwarding wrappers: their inner tool calls are recorded, not the wrapper itself.</summary>
-    public static readonly IReadOnlySet<string> ExcludedTools = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "call_tool", "list_tools", "list_revit_instances", "open_document", "get_document_info", "close_document",
-    };
-
     private readonly ConcurrentDictionary<string, RecordingSession> _sessions = new(StringComparer.Ordinal);
 
     public static bool ShouldRecord(string tool, ToolPermission permission) =>
         !ExcludedPrefixes.Any(p => tool.StartsWith(p, StringComparison.Ordinal)) &&
-        !ExcludedTools.Contains(tool) &&
         (permission >= ToolPermission.Interact || VerificationReads.Contains(tool));
 
     public void OnCompleted(ToolCall call, IGatewayTool tool, ToolResult result, TimeSpan duration)

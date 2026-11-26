@@ -118,7 +118,7 @@ public class ToolProfileTests
     [Theory]
     [InlineData(null)]
     [InlineData(LegacyProtocol)]
-    public async Task PipeSession_WithoutProfile_ListsCore_ButRunsEveryTool(string? protocol)
+    public async Task PipeSession_WithoutProfile_ListsCore_AndRefusesUnlistedTools(string? protocol)
     {
         await using var sp = TestGateway.BuildProvider(out _);
         var total = sp.GetRequiredService<ToolRegistry>().Tools.Count;
@@ -135,9 +135,19 @@ public class ToolProfileTests
         Assert.Equal(total, info.GetProperty("tools_total").GetInt32());
         Assert.Contains("--profile full", info.GetProperty("hint").GetString());
 
-        // A tool outside the profile still runs when called by name.
+        // A tool outside the profile is refused over MCP...
         var notListed = await client.CallToolAsync("sandbox_list_runs", new Dictionary<string, object?>());
-        Assert.NotEqual(true, notListed.IsError);
+        Assert.Equal(true, notListed.IsError);
+        var text = ((ModelContextProtocol.Protocol.TextContentBlock)notListed.Content[0]).Text;
+        using var err = JsonDocument.Parse(text);
+        Assert.Equal("NOT_FOUND", err.RootElement.GetProperty("code").GetString());
+        Assert.Contains("Tool 'sandbox_list_runs' is not available in profile 'core'", err.RootElement.GetProperty("message").GetString());
+        Assert.Equal("core", err.RootElement.GetProperty("details").GetProperty("profile").GetString());
+        Assert.Equal("sandbox_list_runs", err.RootElement.GetProperty("details").GetProperty("tool").GetString());
+
+        // ...but internal callers (macros, scenarios, recorder, dashboard) use the registry directly and still run it.
+        var internalResult = await sp.GetRequiredService<ToolRegistry>().InvokeAsync("sandbox_list_runs", null, "internal", CancellationToken.None);
+        Assert.False(internalResult.IsError);
     }
 
     [Theory]

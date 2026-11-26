@@ -256,6 +256,20 @@ public static class BridgeToolCatalog
                 .String("type", "View kind to disambiguate a name, e.g. floor_plan, 3d, schedule, sheet.")),
 
         new BridgeToolDefinition(
+            BridgeToolNames.ViewExportImage,
+            ToolPermission.Read,
+            "Render a view to PNG with the Revit API (ExportImage): independent of the screen, so it works when Revit is covered, minimized, or the session is locked or RDP-disconnected. " +
+            "Default: the active view of the document. Returns {path, width, height, view_id, view_name, document}; the image is saved under captures (or save_path inside captures/runs). Shows the model view only, not the UI." + Requires,
+            s => s
+                .String("document", DocArg)
+                .Integer("view_id", "View id (model_list_views).")
+                .String("name", "Exact view name (default: the active view).")
+                .Integer("pixel_width", "Image width in pixels (default 1600, max 4096).", defaultValue: 1600, minimum: 64, maximum: 4096)
+                .String("save_path", "PNG path inside the gateway captures or runs folder."),
+            TimeoutSeconds: 90,
+            Prepare: ViewExportImageSupport.Prepare),
+
+        new BridgeToolDefinition(
             BridgeToolNames.SelectionGet,
             ToolPermission.Read,
             "Return the elements currently selected in the active document (id, unique_id, name, category, class) and the total count." + Requires,

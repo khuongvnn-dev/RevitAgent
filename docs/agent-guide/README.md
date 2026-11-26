@@ -28,9 +28,9 @@ Development build path: `src\RevitAgent.Shim\bin\Debug\net10.0-windows\RevitAgen
 | Profile | Tools the model sees | Approx. tokens for tools + instructions |
 |---|---|---|
 | `core` (default) | 18: `gateway_get_info`, `revit_list_instances`, `revit_launch`, `revit_close`, `revit_list_dialogs`, `revit_handle_dialog`, `sandbox_copy_model`, `doc_open`, `model_query_elements`, `model_get_warnings`, `view_activate`, `ui_snapshot`, `ui_click`, `ui_type`, `ui_screenshot`, `human_ask`, `macro_list`, `macro_run` | ~5k |
-| `full` | all 66 | ~22k |
+| `full` | all 67 | ~22k |
 
-A profile only changes the tool list sent to the model; a tool outside the profile still runs when a macro or scenario calls it. If the model must call a non-core tool directly (for example `schedule_read`, `ribbon_list_items`), use `full`. For a task that already has a macro (for example `create-schedule`, `run-addin-command`), call `macro_list` then `macro_run` ([macros.md](macros.md)): one call replaces about 15 UI steps. `gateway_get_info` reports `profile`, `tools_listed`, `tools_total`, a `hint` when tools are hidden, and the `macros` available.
+A profile changes the tool list sent to the model, and a direct call to a tool outside it is refused with `NOT_FOUND` (`details: {profile, tool}`), the same for every client; macros and scenarios still run those tools internally. If the model must call a non-core tool directly (for example `schedule_read`, `ribbon_list_items`), use `full`. For a task that already has a macro (for example `create-schedule`, `run-addin-command`), call `macro_list` then `macro_run` ([macros.md](macros.md)): one call replaces about 15 UI steps. `gateway_get_info` reports `profile`, `tools_listed`, `tools_total`, a `hint` when tools are hidden, and the `macros` available.
 
 | Client | Status on the maintainer's machine |
 |---|---|
@@ -173,7 +173,7 @@ Keeping context small:
 1. `gateway_get_info`: gateway version, sandbox and runs folders, current policy, the session's profile, available macros, and the tools by area with permissions.
 2. `revit_list_instances`: the running Revit processes. **Take the `pid` here and pass it to every other tool.**
 
-Call `revit_launch` only when the user asks for it. If the Bridge add-in is not in Revit, check with `bridge_status` / `bridge_list_installs` (run `bridge_install` only with the user's consent). The Bridge tools (`doc_*`, `model_*`, `schedule_*`, `ribbon_*`, `command_*`...) work only when the Bridge is loaded; a Revit started before the install needs a restart.
+Call `revit_launch` only when the user asks for it. If the Bridge add-in is not in Revit, check with `bridge_status` / `bridge_list_installs` (`bridge_install` / `bridge_uninstall` change the shared Revit add-ins folder, so the machine owner must approve each call: on the RevitAgent dashboard, or on Telegram when configured, within 5 minutes. Without an approval channel the call fails at once with `PERMISSION_DENIED` "Owner approval required"; there is no argument or setting that skips it, so do not retry in a loop: ask the owner to approve, or to press the dashboard's Install Bridge button). The Bridge tools (`doc_*`, `model_*`, `schedule_*`, `ribbon_*`, `command_*`...) work only when the Bridge is loaded; a Revit started before the install needs a restart.
 
 ## 3. Observe, act, verify
 

@@ -9,7 +9,7 @@ using RevitAgent.E2E;
 //   --launch 2024   start our own Revit 2024 through revit_launch (closed again at the end)
 //   --attach <pid>  use a Revit the user started (and whose startup prompts the user answered); never closed
 //   --offline       only the checks that need no Revit
-//   --evidence <dir>  write evidence there, no run record. Default: a normal gateway run (suite e2e-acceptance,
+//   --evidence <dir>  write evidence there, no run record. Default: a normal gateway run (scenario e2e-acceptance,
 //                   trigger cli) at <run store>\<yyyy-MM>\<yyyy-MM-dd>\<HHmmss>_e2e-acceptance_<id6>\evidence, where the
 //                   run store is %REVITAGENT_HOME%\runs or %LOCALAPPDATA%\RevitAgent\runs (config\run-store.json).
 //                   The run folder is printed and the run is finished PASS/FAIL (runs_list, dashboard history).

@@ -14,7 +14,7 @@ public class RecorderTests
         await host.CallOkAsync("ui_snapshot", new { pid }, session);                                   // Read → not recorded
         await host.CallOkAsync("ui_click", new { pid, selector = "id=ID_VIEW_TAB" }, session);
         await host.CallOkAsync("ui_click", new { pid, @ref = "e7" }, session);                         // ref resolved by the result
-        await host.CallOkAsync("ui_wait", new { pid, window = "New Schedule", timeout_sec = 30 }, session);
+        await host.CallOkAsync("ui_wait", new { pid, window = "New Schedule", timeout_s = 30 }, session);
         await host.CallOkAsync("ui_select", new { pid, window = "New Schedule", selector = "id=lstCategories", item = "Rooms" }, session);
         await host.CallOkAsync("ui_click", new { pid, window = "New Schedule", @ref = "e99" }, session); // unresolved ref → TODO
         await host.CallOkAsync("ui_expect", new { pid, window = "Schedule Properties", @is = "gone" }, session);
@@ -53,7 +53,6 @@ public class RecorderTests
     [InlineData("recorder_export", ToolPermission.Write, false)]
     [InlineData("scenario_run", ToolPermission.Write, false)]
     [InlineData("gateway_set_policy", ToolPermission.Admin, false)]
-    [InlineData("call_tool", ToolPermission.Write, false)]
     public void ShouldRecord(string tool, ToolPermission permission, bool expected) =>
         Assert.Equal(expected, ScenarioRecorder.ShouldRecord(tool, permission));
 
@@ -109,13 +108,13 @@ public class RecorderTests
         using var ui = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "ui", "01-ui.json")));
         var steps = ui.RootElement.GetProperty("steps").EnumerateArray().ToArray();
         Assert.False(ui.RootElement.TryGetProperty("window", out _));
-        Assert.Equal(new[] { "click", "click", "wait", "select", "click", "expect" }, steps.Select(x => x.GetProperty("do").GetString()));
-        Assert.Equal("id=ID_VIEW_TAB", steps[0].GetProperty("target").GetString());
-        Assert.Equal("id=ID_SCHEDULES", steps[1].GetProperty("target").GetString());
+        Assert.Equal(new[] { "click", "click", "wait", "select", "click", "expect" }, steps.Select(x => x.GetProperty("action").GetString()));
+        Assert.Equal("id=ID_VIEW_TAB", steps[0].GetProperty("selector").GetString());
+        Assert.Equal("id=ID_SCHEDULES", steps[1].GetProperty("selector").GetString());
         Assert.Equal("New Schedule", steps[2].GetProperty("window").GetString());
-        Assert.Equal(30, steps[2].GetProperty("timeout").GetInt32());
-        Assert.Equal("Rooms", steps[3].GetProperty("text").GetString());
-        Assert.Equal("TODO-ref:e99", steps[4].GetProperty("target").GetString());
+        Assert.Equal(30, steps[2].GetProperty("timeout_s").GetInt32());
+        Assert.Equal("Rooms", steps[3].GetProperty("item").GetString());
+        Assert.Equal("TODO-ref:e99", steps[4].GetProperty("selector").GetString());
         Assert.StartsWith("TODO", steps[4].GetProperty("name").GetString());
         Assert.Equal("gone", steps[5].GetProperty("is").GetString());
         Assert.Single(ui.RootElement.GetProperty("todo").EnumerateArray());

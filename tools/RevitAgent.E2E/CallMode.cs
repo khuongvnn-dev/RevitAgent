@@ -7,7 +7,7 @@ namespace RevitAgent.E2E;
 /// One tool call per process, for driving Revit step by step from a shell (demos, manual exploration):
 /// <code>RevitAgent.E2E.exe call &lt;tool&gt; [&lt;json-args&gt; | @file | -] [--evidence &lt;dir&gt;] [--shim &lt;exe&gt;] [--timeout-min &lt;n&gt;] [--headless]</code>
 /// Prints the full text result and saves images under the evidence folder (default: the evidence\ folder of a new
-/// gateway run, suite e2e-call-&lt;tool&gt;, printed as "run folder:"; --evidence &lt;dir&gt; uses &lt;dir&gt;\&lt;time&gt;-&lt;tool&gt; instead). Gateway state (launched pids, sandbox
+/// gateway run, scenario e2e-call-&lt;tool&gt;, printed as "run folder:"; --evidence &lt;dir&gt; uses &lt;dir&gt;\&lt;time&gt;-&lt;tool&gt; instead). Gateway state (launched pids, sandbox
 /// runs) lives in the Host, so consecutive calls share it.
 /// </summary>
 internal static class CallMode
@@ -56,7 +56,7 @@ internal static class CallMode
         CallOutcome r;
 
         // --headless: the Shim runs the gateway in-process instead of relaying to the dashboard.
-        await using (var s = await McpSession.ConnectAsync(shim, ev.EvidenceDir, a.Contains("--headless") ? new[] { "--headless" } : Array.Empty<string>()))
+        await using (var s = await McpSession.ConnectAsync(shim, ev.EvidenceDir, a.Contains("--headless") ? new[] { "--headless", "--profile", "full" } : new[] { "--profile", "full" }))
         {
             s.Quiet = true;
             r = await s.CallAsync(tool, args, timeout: timeout);

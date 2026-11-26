@@ -20,6 +20,9 @@ public sealed class BridgeClientOptions
 
     /// <summary>Margin by which the Bridge's own timeout is shorter than the Host budget, so the Bridge answers TIMEOUT first.</summary>
     public TimeSpan BridgeTimeoutMargin { get; init; } = TimeSpan.FromSeconds(4);
+
+    /// <summary>How long a call waits for the in-flight call to the same Revit before it gets BUSY.</summary>
+    public TimeSpan QueueWait { get; init; } = BridgeClient.DefaultQueueWait;
 }
 
 /// <summary>
@@ -41,6 +44,20 @@ public sealed class BridgeClient
     private readonly IRevitProcessProbe _processes;
     private readonly BridgeClientOptions _options;
     private readonly ConcurrentDictionary<int, bool> _state = new();
+    private readonly ConcurrentDictionary<int, PidSlot> _slots = new();
+
+    /// <summary>Default for <see cref="BridgeClientOptions.QueueWait"/>: Revit runs one API request at a time, so calls queue per pid.</summary>
+    public static readonly TimeSpan DefaultQueueWait = TimeSpan.FromSeconds(15);
+
+    private sealed class PidSlot
+    {
+        public readonly SemaphoreSlim Gate = new(1, 1);
+        public volatile string? Running;
+    }
+
+    // Answered by the Bridge without the Revit API thread, so they never need to wait.
+    private static bool BypassesQueue(string tool) =>
+        tool is BridgeToolNames.Ping or BridgeToolNames.DialogListEvents or BridgeToolNames.CommandListPostable;
 
     public BridgeClient(GatewayEvents events, IRevitProcessProbe processes, BridgeClientOptions options)
     {
@@ -93,6 +110,48 @@ public sealed class BridgeClient
     public async Task<JsonElement> CallAsync(int pid, string tool, JsonElement? args, TimeSpan budget, CancellationToken cancellationToken)
     {
         EnsureRevitProcess(pid);
+        if (BypassesQueue(tool))
+        {
+            return await CallCoreAsync(pid, tool, args, budget, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Serialize per Revit pid: the wait counts against the budget; cancellation releases (or never takes) the slot.
+        var slot = _slots.GetOrAdd(pid, _ => new PidSlot());
+        var wait = _options.QueueWait < budget ? _options.QueueWait : budget;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        bool entered;
+        try
+        {
+            entered = await slot.Gate.WaitAsync(wait, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new GatewayException(GatewayErrorCodes.Timeout, $"Call to '{tool}' was cancelled while waiting for the previous call to Revit pid {pid}.", new { pid, tool });
+        }
+
+        if (!entered)
+        {
+            var busyTool = slot.Running;
+            throw new GatewayException(
+                GatewayErrorCodes.Busy,
+                $"Revit pid {pid} is still running '{busyTool ?? "another call"}' after {sw.Elapsed.TotalSeconds:0}s; calls to one Revit run one at a time. Retry when it finishes.",
+                new { pid, busy_tool = busyTool, waited_ms = (long)sw.ElapsedMilliseconds });
+        }
+
+        slot.Running = tool;
+        try
+        {
+            return await CallCoreAsync(pid, tool, args, budget - sw.Elapsed, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            slot.Running = null;
+            slot.Gate.Release();
+        }
+    }
+
+    private async Task<JsonElement> CallCoreAsync(int pid, string tool, JsonElement? args, TimeSpan budget, CancellationToken cancellationToken)
+    {
         var pipeName = PipeName(pid);
         if (!await IsPipePresentSettledAsync(pid, cancellationToken).ConfigureAwait(false))
         {

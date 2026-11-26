@@ -7,8 +7,8 @@ namespace RevitAgent.Core.Ui;
 
 /// <summary>
 /// Captures a top-level window to PNG from outside the target process.
-/// Order: PrintWindow(PW_RENDERFULLCONTENT) — works for occluded windows and most WPF/DirectX content —
-/// then a screen copy of the window rectangle. All coordinates are physical pixels (per-monitor DPI aware);
+/// PrintWindow(PW_RENDERFULLCONTENT) works for occluded windows and most
+/// WPF content; DirectX canvases may print black (see <see cref="ScreenshotPlan"/> for what happens then). All coordinates are physical pixels (per-monitor DPI aware);
 /// DPI-unaware windows (rendered by PrintWindow at their 96-DPI size) are scaled up to their on-screen size.
 /// Never throws for a vanished window; returns null instead.
 /// </summary>
@@ -16,33 +16,24 @@ public static class WindowCapture
 {
     private const uint PwRenderFullContent = 2;
 
-    /// <summary>PNG bytes of <paramref name="hwnd"/> (or the whole primary screen when hwnd is zero), or null.</summary>
+    /// <summary>PNG bytes of <paramref name="hwnd"/> through PrintWindow, or null (gone, no size, or printed blank).</summary>
     public static byte[]? CapturePng(IntPtr hwnd)
     {
-        using var bmp = hwnd == IntPtr.Zero ? CaptureScreen() : CaptureWindow(hwnd);
+        using var bmp = hwnd == IntPtr.Zero ? null : CaptureWindow(hwnd);
         return bmp is null ? null : EncodePng(bmp);
     }
 
-    /// <summary>The window at its physical on-screen size, or null when it is gone or has no size.</summary>
+    /// <summary>
+    /// The window at its physical on-screen size through PrintWindow only, or null when it is gone, has no size or
+    /// printed blank/black. Never falls back to screen pixels.
+    /// </summary>
     public static Bitmap? CaptureWindow(IntPtr hwnd) => NativeMethods.WithPhysicalDpi(() => CaptureWindowCore(hwnd, fromScreen: false));
 
     /// <summary>
-    /// Copies the window rectangle from the screen (what the user sees, incl. overlapping windows). Use when
-    /// PrintWindow returns stale/black content (some DirectX canvases). The window should be in the foreground.
+    /// Copies the pixels of the window rectangle (and nothing else) from the screen. They show whatever is on top, so call
+    /// this only after <see cref="ScreenGuard"/> verified the window is rendering, not minimized and not covered.
     /// </summary>
-    public static Bitmap? CaptureWindowFromScreen(IntPtr hwnd) => NativeMethods.WithPhysicalDpi(() => CaptureWindowCore(hwnd, fromScreen: true));
-
-    public static Bitmap CaptureScreen()
-    {
-        return NativeMethods.WithPhysicalDpi(() =>
-        {
-            var bounds = System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
-            var bmp = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
-            using var g = Graphics.FromImage(bmp);
-            g.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
-            return bmp;
-        });
-    }
+    internal static Bitmap? CopyWindowRectFromScreen(IntPtr hwnd) => NativeMethods.WithPhysicalDpi(() => CaptureWindowCore(hwnd, fromScreen: true));
 
     /// <summary>Saves a PNG to <paramref name="path"/> and returns the bytes (null when the window is gone).</summary>
     public static byte[]? SavePng(IntPtr hwnd, string path)
@@ -145,13 +136,7 @@ public static class WindowCapture
             }
         }
 
-        var bmp = Print(hwnd, w, h);
-        if (bmp is null)
-        {
-            return FromScreen(r.Left, r.Top, w, h);
-        }
-
-        return bmp;
+        return Print(hwnd, w, h);
     }
 
     private static Bitmap? Print(IntPtr hwnd, int w, int h)
@@ -191,8 +176,8 @@ public static class WindowCapture
     private static bool IsBlank(Bitmap bmp)
     {
         // Sample a few pixels: PrintWindow on some GPU surfaces returns all-black (or fully transparent).
-        int[] xs = { bmp.Width / 4, bmp.Width / 2, 3 * bmp.Width / 4 };
-        int[] ys = { bmp.Height / 4, bmp.Height / 2, 3 * bmp.Height / 4 };
+        int[] xs = { bmp.Width / 5, 2 * bmp.Width / 5, bmp.Width / 2, 3 * bmp.Width / 5, 4 * bmp.Width / 5 };
+        int[] ys = { bmp.Height / 5, 2 * bmp.Height / 5, bmp.Height / 2, 3 * bmp.Height / 5, 4 * bmp.Height / 5 };
         foreach (var x in xs)
         {
             foreach (var y in ys)

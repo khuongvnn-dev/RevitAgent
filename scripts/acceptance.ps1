@@ -13,7 +13,7 @@
 #   3. Runs tools\RevitAgent.E2E in --attach mode: catalog checks, dialog/readiness, sandbox copy of the model,
 #      doc_open (copy only), doc_info, Levels via the model (the "list all Level names" example), ribbon
 #      items (incl. add-ins), UI snapshot, doc_close (discard). Your Revit is NOT closed.
-#   4. Evidence: a normal gateway run (suite e2e-acceptance) in the run store, i.e.
+#   4. Evidence: a normal gateway run (scenario e2e-acceptance) in the run store, i.e.
 #      %REVITAGENT_HOME%\runs, default %LOCALAPPDATA%\RevitAgent\runs (see config\run-store.json), under
 #      <run folder>\evidence\calls.md (+ JSON / PNG per call). The run is finished PASS or FAIL, so runs_list
 #      and the dashboard history show it. The script prints the run folder at the end.

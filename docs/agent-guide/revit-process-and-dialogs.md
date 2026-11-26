@@ -121,7 +121,9 @@ otherwise → **Do Not Load**. **Always Load** is never pressed. Each press appe
 The list is edited **only by the owner** on the dashboard page "Allowed add-ins". You can read it with `addin_allowlist_get`;
 if your add-in is missing, the gateway will press `Do Not Load` and the add-in will not be loaded — ask the user to add it
 (with a pattern such as `D:\Dev\MyAddin\*\bin\MyAddin.dll` when the folder changes per build). An agent never answers this prompt.
-The RevitAgent Bridge itself is pre-trusted by `bridge_install`, so it never raises it.
+The RevitAgent Bridge itself is pre-trusted by `bridge_install`, so it never raises it. `bridge_install` / `bridge_uninstall` need the machine owner's
+approval (dashboard card, or Telegram when configured; no answer in 5 minutes = denied). An agent cannot approve it; the owner can also use the
+dashboard's Install Bridge button directly.
 
 Rules are applied only to dialogs that were read completely (`Complete`): when a text could not be read in time or UI
 Automation did not answer, the dialog stays `unknown` and nothing is clicked automatically. Password edit fields are
@@ -254,7 +256,7 @@ Launch arguments that name an existing file or folder, or a model / template / f
 | `TARGET_NOT_READY` | Timeout, Not Responding, no main window yet | `revit_get_state`, retry `revit_wait_ready` later. |
 | `PERMISSION_DENIED` | Forbidden dialog, foreign Revit for `revit_close`, policy | Ask the user. |
 | `NOT_FOUND` | pid gone, hwnd not a current blocker, button missing, model missing | Re-list (`revit_list_instances`, `revit_list_dialogs`). |
-| `BUSY` | Another wait/close/dialog call is acting on the same pid | Retry when it finishes. |
+| `BUSY` | Another wait/close/dialog call is acting on the same pid | Retry when it finishes. (Bridge calls to one Revit are queued up to 15 s first; `details.busy_tool` names the call in the way.) |
 | `VALIDATION_FAILED` | Bad argument (hwnd, run_id, launch args, ambiguous button) | Fix the argument. |
 
 ## 10. Limits

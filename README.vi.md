@@ -16,7 +16,7 @@ Bật dashboard (hoặc để AI client tự bật). Mọi agent hỗ trợ MCP,
 - **An toàn mặc định:** chỉ mở model từ bản sao sandbox, không bao giờ lưu đè; hộp thoại cần người quyết thì AI không bao giờ tự trả lời.
 - **Kịch bản và macro:** kịch bản là một thư mục có `scenario.yaml` do gateway chạy; macro là công thức đã kiểm chứng, truy cập qua hai tool.
 - **Ghi và phát lại:** ghi một lần AI giải, phát lại không cần AI.
-- **Bề mặt tool nhỏ cho model nhỏ:** 66 tool; profile `core` mặc định chỉ liệt kê 18.
+- **Bề mặt tool nhỏ cho model nhỏ:** 67 tool; profile `core` mặc định chỉ liệt kê 18.
 - **Có audit:** mọi lời gọi tool đều được ghi; bằng chứng của mỗi lần chạy nằm trong run store.
 
 ## Cách hoạt động
@@ -57,7 +57,7 @@ src\RevitAgent.Host\bin\Debug\net10.0-windows\RevitAgent.Host.exe   # dashboard:
    ```
 
    Cấu hình cho Claude Code, Claude Desktop, Cursor, Antigravity (agy), Codex CLI, client MCP khác và model mở, cùng cách chọn profile theo model: mục 1 của [docs/agent-guide/README.md](docs/agent-guide/README.md).
-3. **Profile tool:** `--profile core|full` (hoặc biến môi trường `REVITAGENT_PROFILE`; mặc định `core`). `core` liệt kê 18 tool, `full` liệt kê cả 66. Tool ngoài profile vẫn chạy được nếu gọi đúng tên.
+3. **Profile tool:** `--profile core|full` (hoặc biến môi trường `REVITAGENT_PROFILE`; mặc định `core`). `core` liệt kê 18 tool, `full` liệt kê cả 67. Gọi thẳng một tool ngoài profile sẽ bị từ chối (`NOT_FOUND`); macro và kịch bản vẫn dùng được các tool đó ở bên trong.
 4. **Nghiệm thu trên Revit thật:** mở Revit 2024, rồi `powershell -ExecutionPolicy Bypass -File scripts\acceptance.ps1`.
 
 ## Nhóm tool

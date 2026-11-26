@@ -18,5 +18,6 @@ public sealed class TelegramModule : IGatewayModule
         services.TryAddSingleton<INotifier>(sp => sp.GetRequiredService<TelegramNotifier>());
         services.TryAddSingleton<TelegramHumanEscalation>();
         services.TryAddSingleton<IHumanEscalation>(sp => sp.GetRequiredService<TelegramHumanEscalation>());
+        services.AddSingleton<RevitAgent.Core.Policy.IOwnerApprovalChannel, TelegramOwnerApprovalChannel>();
     }
 }
