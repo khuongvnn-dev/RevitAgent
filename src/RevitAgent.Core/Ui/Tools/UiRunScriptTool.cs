@@ -164,6 +164,13 @@ public sealed class UiRunScriptTool : UiToolBase
             throw GatewayException.Denied($"out_dir must be inside the gateway home ({root}); got '{dir}'.");
         }
 
+        // Never write into an existing run: an occupied folder gets a fresh subfolder.
+        if (Directory.Exists(dir) && Directory.EnumerateFileSystemEntries(dir).Any())
+        {
+            var safe = Regex.Replace(name, "[^\\w\\-]+", "_");
+            dir = Path.Combine(dir, $"{(safe.Length > 40 ? safe[..40] : safe)}_{DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture)}");
+        }
+
         return dir;
     }
 

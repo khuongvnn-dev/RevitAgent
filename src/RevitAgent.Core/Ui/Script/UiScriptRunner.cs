@@ -108,7 +108,9 @@ public sealed class UiScriptRunner
             var expected = ExpectedOf(step);
             if (stop || DateTime.UtcNow > _deadline)
             {
-                results.Add(new UiStepResult(step.Number, label, "skipped", 0, string.Empty, expected, stop ? string.Empty : "run time budget exhausted", string.Empty, step.Optional));
+                // A required step that never ran because the time budget ran out is a failure, not a skip (a run must not pass with unrun steps).
+                var budgetSkip = !stop && !step.Optional;
+                results.Add(new UiStepResult(step.Number, label, budgetSkip ? "failed" : "skipped", 0, string.Empty, expected, stop ? string.Empty : "run time budget exhausted", string.Empty, step.Optional));
                 continue;
             }
 
@@ -122,6 +124,21 @@ public sealed class UiScriptRunner
             }
             catch (OperationCanceledException)
             {
+                // Keep the partial evidence: the report of what ran so far, with this step failed as cancelled.
+                results.Add(new UiStepResult(step.Number, label, "failed", sw.ElapsedMilliseconds, observed, expected, "cancelled", string.Empty, step.Optional));
+                foreach (var rest in _script.Steps.Where(x => x.Number > step.Number))
+                {
+                    results.Add(new UiStepResult(rest.Number, rest.Label, "skipped", 0, string.Empty, ExpectedOf(rest), "cancelled", string.Empty, rest.Optional));
+                }
+
+                try
+                {
+                    WriteReports(BuildReport(results, warnings, "failed"));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                }
+
                 throw;
             }
             catch (ExpectationNotMet ex)
@@ -143,7 +160,7 @@ public sealed class UiScriptRunner
             }
 
             sw.Stop();
-            if (status == "failed" && _refusals > refusals)
+            if (status == "failed" && (_refusals > refusals || ForbiddenDialogOpen()))
             {
                 status = "blocked"; // a forbidden dialog is in the way and was left for a human
             }
@@ -170,14 +187,21 @@ public sealed class UiScriptRunner
             results.Add(new UiStepResult(step.Number, label, status, sw.ElapsedMilliseconds, observed, expected, error, shot, step.Optional));
         }
 
+        var report = BuildReport(results, warnings, null);
+        WriteReports(report);
+        return report;
+    }
+
+    private UiScriptReport BuildReport(List<UiStepResult> results, IReadOnlyList<string> warnings, string? verdictOverride)
+    {
         int Count(string status, bool optional) => results.Count(r => r.Status == status && r.Optional == optional);
         var blocked = Count("blocked", false);
         var failed = Count("failed", false);
-        var report = new UiScriptReport
+        return new UiScriptReport
         {
             Name = _script.Name,
             File = _script.Path,
-            Verdict = blocked > 0 ? "blocked" : failed > 0 ? "failed" : "passed",
+            Verdict = verdictOverride ?? (blocked > 0 ? "blocked" : failed > 0 ? "failed" : "passed"),
             Passed = results.Count(r => r.Status == "passed"),
             Failed = failed,
             Blocked = blocked,
@@ -189,8 +213,39 @@ public sealed class UiScriptRunner
             RunDir = _runDir,
             Warnings = warnings,
         };
-        WriteReports(report);
-        return report;
+    }
+
+    /// <summary>True when the target process has an open modal dialog that DialogSafety forbids (or whose text cannot be read completely).</summary>
+    private bool ForbiddenDialogOpen()
+    {
+        try
+        {
+            foreach (var w in TopLevelWindows.List(_pid))
+            {
+                if (!w.IsModalDialog)
+                {
+                    continue;
+                }
+
+                var text = UiActions.AllText(_op, _op.Core.FromHandle(w.Hwnd), TimeSpan.FromSeconds(3));
+                if (text.Contains("[... truncated", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (RevitAgent.Core.Revit.DialogSafety.Classify(w.Title, lines).IsForbidden)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Could not look: keep the step's own failure status.
+        }
+
+        return false;
     }
 
     /// <summary>Human-readable expectation of an expect / wait step (empty for other steps).</summary>
@@ -377,7 +432,34 @@ public sealed class UiScriptRunner
 
     private string Screenshot(StepArgs s)
     {
-        var path = OutputPath(s.SavePath, $"shot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
+        var path = OutputPath(s.SavePath, $"shot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png", ".png");
+        try
+        {
+            return ScreenshotTo(s, path);
+        }
+        catch
+        {
+            TryDeleteEmpty(path);
+            throw;
+        }
+    }
+
+    private static void TryDeleteEmpty(string path)
+    {
+        try
+        {
+            if (File.Exists(path) && new FileInfo(path).Length == 0)
+            {
+                File.Delete(path);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private string ScreenshotTo(StepArgs s, string path)
+    {
         var t = Resolve(s, needEnabled: false, allowWindow: true);
         if (NativeMethods.IsIconic(t.Window.Handle))
         {
@@ -388,10 +470,17 @@ public sealed class UiScriptRunner
             ?? throw GatewayException.NotReady("window printed blank or has no size (hidden, minimized, or a canvas PrintWindow cannot render); use the ui_screenshot tool or view_export_image");
         System.Drawing.Bitmap shot = full;
         System.Drawing.Bitmap? crop = null;
-        if (!t.IsWindow && _op.Core.ReadLive(t.Element).Bounds is { } b)
+        if (!t.IsWindow)
         {
-            crop = WindowCapture.Crop(full, new System.Drawing.Rectangle(b.X - t.Window.Left, b.Y - t.Window.Top, b.Width, b.Height));
-            shot = crop ?? full;
+            // An element screenshot must show that element: never silently fall back to the whole window.
+            if (_op.Core.ReadLive(t.Element).Bounds is not { } b)
+            {
+                throw GatewayException.NotReady("screenshot: the element has no on-screen bounds (offscreen or collapsed); target the window instead");
+            }
+
+            crop = WindowCapture.Crop(full, new System.Drawing.Rectangle(b.X - t.Window.Left, b.Y - t.Window.Top, b.Width, b.Height))
+                ?? throw GatewayException.NotReady("screenshot: the element lies outside the captured window; target the window instead");
+            shot = crop;
         }
 
         try
@@ -637,7 +726,7 @@ public sealed class UiScriptRunner
         var rows = (List<List<string>>)r["rows"]!;
         if (s.SavePath is not null)
         {
-            var path = OutputPath(s.SavePath, "table.csv");
+            var path = OutputPath(s.SavePath, "table.csv", ".csv");
             static string Q(string v) => "\"" + v.Replace("\"", "\"\"") + "\"";
             var sb = new StringBuilder();
             if (headers.Count > 0)
@@ -799,11 +888,32 @@ public sealed class UiScriptRunner
             : _ui.ResolveTarget(_op, spec, reference, selector, allowWindow);
     }
 
-    private string OutputPath(string? requested, string defaultName)
+    /// <summary>
+    /// A new file for a step output: inside the gateway evidence folders, with the expected extension (so a step cannot
+    /// replace result.json, a model copy...), and never an existing file (a taken name gets a -2, -3... suffix).
+    /// </summary>
+    private string OutputPath(string? requested, string defaultName, string requiredExt)
     {
-        var path = UiPaths.Evidence(_ui.Paths, string.IsNullOrWhiteSpace(requested) ? defaultName : requested, _runDir);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        return path;
+        var path = UiPaths.Evidence(_ui.Paths, NormalizeOutputName(requested, defaultName, requiredExt), _runDir);
+        return Sandbox.EvidenceService.Reserve(path);
+    }
+
+    /// <summary>The step output name: <paramref name="requested"/> (or the default) with <paramref name="requiredExt"/> added when it has no extension; any other extension is refused.</summary>
+    public static string NormalizeOutputName(string? requested, string defaultName, string requiredExt)
+    {
+        var name = string.IsNullOrWhiteSpace(requested) ? defaultName : requested;
+        var ext = Path.GetExtension(name);
+        if (ext.Length == 0)
+        {
+            return name + requiredExt;
+        }
+
+        if (!string.Equals(ext, requiredExt, StringComparison.OrdinalIgnoreCase))
+        {
+            throw GatewayException.Validation($"save_path must end with {requiredExt} (got '{ext}'); step outputs never replace other file types");
+        }
+
+        return name;
     }
 
     private string? SaveShot(string path)
@@ -817,6 +927,7 @@ public sealed class UiScriptRunner
                 return null;
             }
 
+            path = Sandbox.EvidenceService.Reserve(path);
             File.WriteAllBytes(path, WindowCapture.EncodePng(bmp));
             return path;
         }
