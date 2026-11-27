@@ -24,10 +24,11 @@ public static class UiSafety
         op.Service.EnsureInputTarget(w.ProcessId, Sandbox.EvidenceService.CurrentCaller?.Tool ?? "UI input");
         var texts = new List<string>();
         // The application's main window carries ribbon buttons ("Delete", ...) that are not dialog content: title only.
+        // A modal dialog is never "the main window", even when it is the only visible window of its process (its owner hidden).
         bool main = false;
         try
         {
-            main = op.Service.IsMainWindow(w);
+            main = !w.IsModalDialog && op.Service.IsMainWindow(w);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -96,6 +97,13 @@ public static class UiSafety
             try
             {
                 var ct = e.GetCachedPropertyValue(Interop.UIAutomationClient.UIA_PropertyIds.UIA_ControlTypePropertyId) is int i ? i : 0;
+                if (ct is ControlTypes.TitleBar or ControlTypes.MenuBar)
+                {
+                    // Window chrome (the caption's Minimize / Maximize / Close, the system menu): in the WINDOWS language, not the
+                    // dialog's. Counting its "Close" made a German Revit prompt on an English Windows look English.
+                    continue;
+                }
+
                 if (ct is ControlTypes.List or ControlTypes.Tree or ControlTypes.ComboBox or ControlTypes.DataGrid or ControlTypes.Table)
                 {
                     isForm = true;

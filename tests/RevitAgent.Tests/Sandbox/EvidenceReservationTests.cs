@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using RevitAgent.Core;
 using RevitAgent.Core.Policy;
 using RevitAgent.Core.Sandbox;
+using RevitAgent.Core.Tools;
 
 namespace RevitAgent.Tests.Sandbox;
 
@@ -20,6 +21,24 @@ public class EvidenceReservationTests
         Assert.EndsWith("a-2.png", second);
         Assert.EndsWith("a-3.png", third);
         Assert.True(File.Exists(second) && File.Exists(third));
+    }
+
+    /// <summary>
+    /// ui_screenshot / view_export_image write into a name DefaultPath reserved (an empty file): that must work, while a file
+    /// with content is never overwritten (regression: the reservation made every run-folder screenshot CONFLICT).
+    /// </summary>
+    [Fact]
+    public void WriteNew_FillsAnEmptyReservation_ButNeverOverwritesContent()
+    {
+        var dir = TestGateway.NewTempDir("revitagent_resv_");
+        var reserved = EvidenceService.Reserve(Path.Combine(dir, "shot.png"));
+        RevitAgent.Core.Ui.UiPaths.WriteNew(reserved, new byte[] { 1, 2, 3 });
+        Assert.Equal(3, new FileInfo(reserved).Length);
+
+        var ex = Assert.Throws<GatewayException>(() => RevitAgent.Core.Ui.UiPaths.WriteNew(reserved, new byte[] { 9 }));
+        Assert.Equal(RevitAgent.Contracts.Protocol.GatewayErrorCodes.Conflict, ex.Code);
+        Assert.Equal(3, new FileInfo(reserved).Length);
+        Assert.Throws<GatewayException>(() => RevitAgent.Core.Ui.UiPaths.EnsureNew(reserved));
     }
 
     [Fact]

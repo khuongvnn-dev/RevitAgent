@@ -27,8 +27,9 @@ namespace RevitAgent.Bridge.Tools
                 throw ToolArgs.Invalid("'save_path' must be a .png file.");
             }
 
-            // New files only: an existing file (evidence, run data) is never replaced or deleted by an export.
-            if (File.Exists(target) || Directory.Exists(target))
+            // New files only: an existing file with content (evidence, run data) is never replaced or deleted by an export.
+            // An EMPTY file is a name the gateway reserved for this export (EvidenceService.Reserve): it is filled in.
+            if (Directory.Exists(target) || (File.Exists(target) && new FileInfo(target).Length > 0))
             {
                 throw new BridgeToolException(GatewayErrorCodes.Conflict, "'" + target + "' already exists; view_export_image only writes new files. Pick another save_path.");
             }
@@ -78,6 +79,11 @@ namespace RevitAgent.Bridge.Tools
                 var source = produced.OrderByDescending(f => new FileInfo(f).Length).First();
                 try
                 {
+                    if (File.Exists(target) && new FileInfo(target).Length == 0)
+                    {
+                        File.Delete(target); // the empty reservation only (checked just now); never a file with content
+                    }
+
                     File.Move(source, target); // never overwrites: fails when the target appeared meanwhile
                 }
                 catch (IOException) when (File.Exists(target))

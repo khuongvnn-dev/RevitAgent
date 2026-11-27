@@ -52,10 +52,26 @@ public static class UiPaths
         return full;
     }
 
-    /// <summary>CONFLICT when <paramref name="full"/> already exists (file or folder).</summary>
+    /// <summary>
+    /// True for an empty file: a name claimed by <see cref="Sandbox.EvidenceService.Reserve"/> (or any 0-byte file), which
+    /// may be written because no data can be lost.
+    /// </summary>
+    public static bool IsEmptyReservation(string full)
+    {
+        try
+        {
+            return File.Exists(full) && new FileInfo(full).Length == 0;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>CONFLICT when <paramref name="full"/> already exists (a folder, or a file with content; an empty reserved file is fine).</summary>
     public static void EnsureNew(string full)
     {
-        if (File.Exists(full) || Directory.Exists(full))
+        if (Directory.Exists(full) || (File.Exists(full) && !IsEmptyReservation(full)))
         {
             throw new GatewayException(
                 Contracts.Protocol.GatewayErrorCodes.Conflict,
@@ -63,13 +79,18 @@ public static class UiPaths
         }
     }
 
-    /// <summary>Writes <paramref name="bytes"/> to a file that must not exist yet (CONFLICT otherwise; never overwrites).</summary>
+    /// <summary>
+    /// Writes <paramref name="bytes"/> to a file that must not exist yet, or that is an empty reserved file
+    /// (<see cref="IsEmptyReservation"/>); a file with content is CONFLICT, never overwritten.
+    /// </summary>
     public static void WriteNew(string full, byte[] bytes)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         try
         {
-            using var stream = new FileStream(full, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            // An empty reservation is filled in place (Truncate opens an existing file only); otherwise the file must be new.
+            var mode = IsEmptyReservation(full) ? FileMode.Truncate : FileMode.CreateNew;
+            using var stream = new FileStream(full, mode, FileAccess.Write, FileShare.None);
             stream.Write(bytes, 0, bytes.Length);
         }
         catch (IOException) when (File.Exists(full))

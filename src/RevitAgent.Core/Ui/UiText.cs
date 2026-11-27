@@ -60,6 +60,7 @@ public static class ControlTypes
     public const int ComboBox = 50003;
     public const int Edit = 50004;
     public const int ListItem = 50007;
+    public const int MenuBar = 50010;
     public const int List = 50008;
     public const int MenuItem = 50011;
     public const int RadioButton = 50013;
@@ -77,6 +78,7 @@ public static class ControlTypes
     public const int Header = 50034;
     public const int HeaderItem = 50035;
     public const int Table = 50036;
+    public const int TitleBar = 50037;
 
     public static string Name(int id)
     {

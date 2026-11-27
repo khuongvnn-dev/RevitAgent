@@ -829,6 +829,7 @@ public sealed class UiScriptRunner
                     else if (!string.IsNullOrEmpty(r.Keys))
                     {
                         var strokes = InputSender.ParseSendKeys(r.Keys);
+                        UiSafety.EnsureActionAllowed(_op, w); // same checks as the click branch (process, forbidden, unrecognised language)
                         UiActions.EnsureAltF4Safe(_op, strokes, w);
                         InputSender.EnsureForeground(w.Handle, _pid, "a dialog rule", _op.Token);
                         UiActions.EnsureAltF4Safe(_op, strokes, w, afterActivation: true);
@@ -844,6 +845,11 @@ public sealed class UiScriptRunner
                     n++;
                     _op.Sleep(400);
                     break;
+                }
+                catch (GatewayException ex) when (ex.Code == GatewayErrorCodes.PermissionDenied)
+                {
+                    _refusals++;
+                    Note($"refused to auto-answer dialog \"{w.Title}\" by rule '{label}': {ex.Message}");
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

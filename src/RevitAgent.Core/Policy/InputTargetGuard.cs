@@ -68,7 +68,7 @@ public sealed class InputTargetGuard
         {
             throw GatewayException.Denied(
                 $"{what} refused: UI input only goes to Revit (Revit.exe); pid {pid} is '{name}'. " +
-                "The owner can allow more applications in the dashboard settings. Read-only tools (ui_snapshot, ui_find, ui_inspect, ui_screenshot, ui_list_windows) still work on it.",
+                "The owner can allow more applications in the dashboard settings. Read-only tools (ui_snapshot, ui_screenshot) still work on it.",
                 new { pid, process = name, needs = "allowed_input_process" });
         }
 

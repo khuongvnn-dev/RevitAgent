@@ -39,6 +39,8 @@ public class CoreHintTests
         "src/RevitAgent.Bridge/Tools/DocumentTools.cs",
         "src/RevitAgent.Bridge/Tools/ScheduleTools.cs",
         "src/RevitAgent.Bridge/Tools/UiTools.cs",
+        "src/RevitAgent.Bridge/Tools/ViewExportTools.cs", // view_export_image's own errors; ui_screenshot reports a Bridge failure only as its fallback reason
+
 
         // UI script internals and descriptions of other tools (full-profile callers only).
         "src/RevitAgent.Core/Ui/ScreenshotPlan.cs",
