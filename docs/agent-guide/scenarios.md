@@ -101,8 +101,8 @@ Every string in `args` is expanded. Unknown variables are left as written (valid
 ## 4. Running: scenario_validate, then scenario_run
 
 ```json
-{ "name": "scenario_validate", "arguments": { "scenario_dir": "D:\\repo\\examples\\scenarios\\levels-inventory" } }
-{ "name": "scenario_run",      "arguments": { "scenario_dir": "D:\\repo\\examples\\scenarios\\levels-inventory", "pid": 12345 } }
+{ "name": "scenario_validate", "arguments": { "scenario_dir": "<repo>\\examples\\scenarios\\levels-inventory" } }
+{ "name": "scenario_run",      "arguments": { "scenario_dir": "<repo>\\examples\\scenarios\\levels-inventory", "pid": 12345 } }
 ```
 
 `scenario_run` arguments: `scenario_dir` or `scenario_path` (the scenario.yaml file); `pid` (use a running Revit, never closed by the run) **or** `launch: true` (start `revit_version`, close it afterwards), not both; `keep_open` (leave the document and a Revit launched by the run open); `dataset`. A scenario with a `model` or a ui step needs `pid` or `launch`. One run at a time (a second call returns `BUSY`); a run may take hours (limit 2 h). `scenario_run` refuses to start while `scenario_validate` reports **errors** (warnings do not block).

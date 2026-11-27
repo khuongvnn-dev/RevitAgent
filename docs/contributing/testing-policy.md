@@ -10,6 +10,13 @@ dotnet test tests/RevitAgent.Tests/RevitAgent.Tests.csproj
 
 The suite uses xUnit. Tests that drive real UI or dialogs need an unlocked interactive desktop.
 
+Set `REVITAGENT_SKIP_UI_TESTS=1` to skip the desktop (UI automation) tests and the live-Revit tests. Use it in CI, on a locked or headless machine, and whenever no Revit is installed:
+
+```powershell
+$env:REVITAGENT_SKIP_UI_TESTS = '1'
+dotnet test tests/RevitAgent.Tests/RevitAgent.Tests.csproj
+```
+
 ## 1. Principles
 
 1. **Isolated and deterministic.** A unit test must not depend on a running Revit or on files on the developer's machine. Use temp folders, in-memory streams, fakes, and the test gateway in `tests/RevitAgent.Tests`.

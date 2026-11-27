@@ -1,7 +1,7 @@
 # ==================================================================
 # acceptance.ps1 - RevitAgent v2 live acceptance (attach mode)
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\acceptance.ps1 [-Year 2024] [-Model <source .rvt>] [-WaitMinutes 10]
+#   powershell -ExecutionPolicy Bypass -File scripts\acceptance.ps1 [-Year 2024] -Model <source .rvt> [-WaitMinutes 10]
 #
 # What it does
 #   1. Builds the solution (Debug) unless -NoBuild.
@@ -22,7 +22,7 @@
 [CmdletBinding()]
 param(
     [int]$Year = 2024,
-    [string]$Model = 'D:\Autodesk\Revit 2024\Samples\Snowdon Towers Sample Architectural.rvt',
+    [Parameter(Mandatory = $true)][string]$Model,   # path to a .rvt, e.g. an Autodesk sample model
     [int]$WaitMinutes = 10,
     [switch]$NoBuild,
     [switch]$GrantReady   # skip the "enable the action grant" pause (grant already on)

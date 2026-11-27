@@ -120,7 +120,7 @@ otherwise → **Do Not Load**. **Always Load** is never pressed. Each press appe
 
 The list is edited **only by the owner** on the dashboard page "Allowed add-ins". You can read it with `addin_allowlist_get`;
 if your add-in is missing, the gateway will press `Do Not Load` and the add-in will not be loaded — ask the user to add it
-(with a pattern such as `D:\Dev\MyAddin\*\bin\MyAddin.dll` when the folder changes per build). An agent never answers this prompt.
+(with a pattern such as `C:\Dev\MyAddin\*\bin\MyAddin.dll` when the folder changes per build). An agent never answers this prompt.
 The RevitAgent Bridge itself is pre-trusted by `bridge_install`, so it never raises it. `bridge_install` / `bridge_uninstall` need the machine owner's
 approval (dashboard card, or Telegram when configured; no answer in 5 minutes = denied). An agent cannot approve it; the owner can also use the
 dashboard's Install Bridge button directly.

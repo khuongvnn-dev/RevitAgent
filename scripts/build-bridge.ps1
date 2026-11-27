@@ -5,7 +5,7 @@
     One build per year (2022-2024 -> net48, 2025-2026 -> net8.0-windows), sequentially, into
     src\RevitAgent.Bridge\bin\<Configuration>\R<yy>\. Verifies that each output folder contains only
     RevitAgent.Bridge.dll (+ .pdb) - the Bridge must not ship third-party DLLs into Revit.
-    Install the result with the gateway tool bridge_install (or scripts\install-bridge.ps1).
+    Install the result with the gateway tool bridge_install (or the dashboard "Install Bridge" button).
 .PARAMETER Configuration
     Release (default) or Debug.
 .PARAMETER Years

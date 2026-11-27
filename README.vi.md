@@ -71,7 +71,7 @@ src\RevitAgent.Host\bin\Debug\net10.0-windows\RevitAgent.Host.exe   # dashboard:
 | `ribbon_list_items`, `command_post` | | Thấy và chạy nút ribbon của bất kỳ add-in nào. |
 | `sandbox_*` | create_run, copy_model, list_runs | Bản sao model kèm băm SHA-256 chứng minh bản gốc không đổi. |
 | `scenario_*`, `recorder_*` | validate, run, list_runs; start, stop, export | Kịch bản có kiểm tra và báo cáo; ghi và phát lại. |
-| `macro_list`, `macro_run` | `create-schedule`, `run-addin-command` có sẵn | Công thức nhiều bước đã kiểm chứng ([macros](docs/agent-guide/macros.md)). |
+| `macro_list`, `macro_run` | `create-schedule`, `run-addin-command`, `run-revit-command`, `read-schedule` có sẵn | Công thức nhiều bước đã kiểm chứng ([macros](docs/agent-guide/macros.md)). |
 | `human_ask` | | Hỏi chủ máy một câu. |
 
 Danh mục đầy đủ: [docs/agent-guide/tool-catalog.md](docs/agent-guide/tool-catalog.md).
@@ -88,6 +88,7 @@ Do gateway thực thi, đúng cho mọi client:
 3. **Model chỉ mở từ sandbox** (`%REVITAGENT_HOME%\runs`, mặc định `%LOCALAPPDATA%\RevitAgent\runs`) và không bao giờ lưu đè bản gốc.
 4. **Mọi lời gọi tool đều được audit** (`%LOCALAPPDATA%\RevitAgent\audit\*.jsonl`); trần quyền (Read/Interact/Write/Admin) chỉnh ở dashboard.
 5. **Không có tool nào chạy mã tuỳ ý.**
+6. **Cài Bridge cần chủ máy duyệt.** `bridge_install` ghi manifest của add-in và tin cậy trước AddInId của Bridge trong khoá registry CodeSigning theo người dùng của Revit, nên Revit không hiện hộp thoại add-in chưa ký cho Bridge. Việc này cần chủ máy duyệt, và `bridge_uninstall` xoá mục tin cậy đó.
 
 ## Tài liệu
 
@@ -103,8 +104,14 @@ Do gateway thực thi, đúng cho mọi client:
 ## Trạng thái
 
 Đã kiểm chứng trực tiếp trên Revit 2024.3 ngày 2026-11-26 với Claude Code (Haiku và Opus) và Antigravity CLI (Gemini 3.8 Flash).
-Nhánh `feature/gateway-v2`.
+Bản phát hành sớm, chỉ chạy trên Windows. Đã chạy thử trực tiếp trên Revit 2024.3; Bridge build được cho Revit 2022-2026.
+
+Bridge biên dịch với các gói NuGet reference-assembly của cộng đồng `Nice3point.Revit.Api.*`, nên build không cần cài Revit, và không có DLL nào của Autodesk được đóng kèm trong repo hay trong kết quả build.
 
 ## Giấy phép
 
-Giấy phép: [MIT](LICENSE).
+Giấy phép: [MIT](LICENSE). Gói bên thứ ba: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Báo lỗi bảo mật: [SECURITY.md](SECURITY.md). Đóng góp: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Nhãn hiệu
+
+Autodesk và Revit là nhãn hiệu đã đăng ký của Autodesk, Inc. RevitAgent là dự án độc lập, không liên kết, tài trợ hay được Autodesk chứng thực.

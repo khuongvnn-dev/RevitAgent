@@ -16,7 +16,7 @@ Every run is stored in the central **Run Data Store** with its `trigger` (`manua
   - Custom: set it in **Settings** under "Scenario folder", or write `%REVITAGENT_HOME%\config\scenarios.json`:
     ```json
     {
-      "library_dir": "D:\\QA\\Scenarios"
+      "library_dir": "C:\\path\\to\\Scenarios"
     }
     ```
 - **Discovery:** every direct sub-folder that contains a `scenario.yaml` is listed, with its folder name, scenario name (`name`), required Revit version (`revit_version`), description (`description`) and last result (`last_verdict`, looked up in the Run Store). The file format is in [scenarios.md](scenarios.md).
@@ -48,8 +48,8 @@ Runs tests periodically when nobody is at the machine.
     "time": "22:00",
     "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
     "scenarios": [
-      "D:\\QA\\Scenarios\\levels-inventory",
-      "D:\\QA\\Scenarios\\room-schedule-ui"
+      "C:\\path\\to\\Scenarios\\levels-inventory",
+      "C:\\path\\to\\Scenarios\\room-schedule-ui"
     ],
     "revit_year": 2024,
     "last_fired": "2026-11-25T22:00:00+07:00"

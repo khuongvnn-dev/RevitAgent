@@ -30,7 +30,7 @@ Development build path: `src\RevitAgent.Shim\bin\Debug\net10.0-windows\RevitAgen
 | `core` (default) | 18: `gateway_get_info`, `revit_list_instances`, `revit_launch`, `revit_close`, `revit_list_dialogs`, `revit_handle_dialog`, `sandbox_copy_model`, `doc_open`, `model_query_elements`, `model_get_warnings`, `view_activate`, `ui_snapshot`, `ui_click`, `ui_type`, `ui_screenshot`, `human_ask`, `macro_list`, `macro_run` | ~5k |
 | `full` | all 67 | ~22k |
 
-A profile changes the tool list sent to the model, and a direct call to a tool outside it is refused with `NOT_FOUND` (`details: {profile, tool}`), the same for every client; macros and scenarios still run those tools internally. If the model must call a non-core tool directly (for example `schedule_read`, `ribbon_list_items`), use `full`. For a task that already has a macro (for example `create-schedule`, `run-addin-command`), call `macro_list` then `macro_run` ([macros.md](macros.md)): one call replaces about 15 UI steps. `gateway_get_info` reports `profile`, `tools_listed`, `tools_total`, a `hint` when tools are hidden, and the `macros` available.
+A profile changes the tool list sent to the model, and a direct call to a tool outside it is refused with `NOT_FOUND` (`details: {profile, tool}`), the same for every client; macros and scenarios still run those tools internally. If the model must call a non-core tool directly (for example `schedule_read`, `ribbon_list_items`), use `full`. For a task that already has a macro (`create-schedule`, `run-addin-command`, `run-revit-command`, `read-schedule`; see [macros.md](macros.md)), call `macro_list` then `macro_run` ([macros.md](macros.md)): one call replaces about 15 UI steps. `gateway_get_info` reports `profile`, `tools_listed`, `tools_total`, a `hint` when tools are hidden, and the `macros` available.
 
 | Client | Status on the maintainer's machine |
 |---|---|
@@ -38,6 +38,8 @@ A profile changes the tool list sent to the model, and a direct call to a tool o
 | agy (Antigravity CLI 1.5.17) | Verified 2026-11-26 (Gemini 3.8 Flash: same task in about 8.5 minutes) |
 | Claude Desktop, Cursor | Not verified with `--profile` |
 | Codex CLI, other clients | Not verified on this machine; configuration taken from official documentation |
+
+In every config below, replace `<repo>` with the real path of your clone (backslashes doubled inside JSON strings).
 
 ### Claude Code
 
@@ -57,7 +59,7 @@ Edit `claude_desktop_config.json` (escape backslashes as `\\`):
 {
   "mcpServers": {
     "revitagent": {
-      "command": "D:\\RevitAgent\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
+      "command": "<repo>\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
       "args": ["--profile", "core"]
     }
   }
@@ -72,7 +74,7 @@ Create `.cursor/mcp.json` (in the project) or `~/.cursor/mcp.json`, same shape:
 {
   "mcpServers": {
     "revitagent": {
-      "command": "D:\\RevitAgent\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
+      "command": "<repo>\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
       "args": ["--headless", "--profile", "core"]
     }
   }
@@ -113,7 +115,7 @@ This writes to `%USERPROFILE%\.codex\config.toml`. Codex defaults to 10 s for se
 
 ```toml
 [mcp_servers.revitagent]
-command = 'D:\RevitAgent\src\RevitAgent.Shim\bin\Debug\net10.0-windows\RevitAgent.Shim.exe'
+command = '<repo>\src\RevitAgent.Shim\bin\Debug\net10.0-windows\RevitAgent.Shim.exe'
 args = ["--profile", "core"]
 startup_timeout_sec = 60   # the Shim may have to start the Host
 tool_timeout_sec = 900     # at least 600
@@ -137,7 +139,7 @@ Generic form (most clients read this):
 {
   "mcpServers": {
     "revitagent": {
-      "command": "D:\\RevitAgent\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
+      "command": "<repo>\\src\\RevitAgent.Shim\\bin\\Debug\\net10.0-windows\\RevitAgent.Shim.exe",
       "args": ["--profile", "core"]
     }
   }

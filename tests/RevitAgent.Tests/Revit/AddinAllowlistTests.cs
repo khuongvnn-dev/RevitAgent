@@ -85,13 +85,13 @@ public class AddinAllowlistTests
     [InlineData(@"D:\Work\Acme?\Outcome\MyAddin.dll", @"D:\Work\Acme1\Outcome\MyAddin.dll", true)]
     [InlineData(@"D:\Work\Acme?\Outcome\MyAddin.dll", @"D:\Work\Acme12\Outcome\MyAddin.dll", false)]
     [InlineData(@"D:\Work\Acme?\Outcome\MyAddin.dll", @"D:\Work\Acme\Outcome\MyAddin.dll", false)]
-    [InlineData(@"D:\Gits\X\a.dll", @"D:/Gits/X/a.dll", true)]                                                                       // normalized slashes
-    [InlineData(@"D:\Gits\X\a.dll", @"D:\Gits\X\sub\..\a.dll", true)]                                                               // .. resolved
-    [InlineData(@"D:\Gits\X\a.dll", @"D:\Gits\X\..\Y\a.dll", false)]
-    [InlineData(@"D:\Gits\X\a.dll", @"D:\Gits\X\a.dll.evil", false)]                                                                // anchored
-    [InlineData(@"D:\Gits\X\a.dll", @"E:\Gits\X\a.dll", false)]
-    [InlineData(@"D:\Gits\X\a+b(1).dll", @"D:\Gits\X\a+b(1).dll", true)]                                                            // regex chars are literal
-    [InlineData(@"D:\Gits\X\a.dll", @"relative\a.dll", false)]
+    [InlineData(@"C:\Tools\X\a.dll", @"C:/Tools/X/a.dll", true)]                                                                       // normalized slashes
+    [InlineData(@"C:\Tools\X\a.dll", @"C:\Tools\X\sub\..\a.dll", true)]                                                               // .. resolved
+    [InlineData(@"C:\Tools\X\a.dll", @"C:\Tools\X\..\Y\a.dll", false)]
+    [InlineData(@"C:\Tools\X\a.dll", @"C:\Tools\X\a.dll.evil", false)]                                                                // anchored
+    [InlineData(@"C:\Tools\X\a.dll", @"E:\Tools\X\a.dll", false)]
+    [InlineData(@"C:\Tools\X\a+b(1).dll", @"C:\Tools\X\a+b(1).dll", true)]                                                            // regex chars are literal
+    [InlineData(@"C:\Tools\X\a.dll", @"relative\a.dll", false)]
     public void Matcher_Globs(string pattern, string location, bool expected) =>
         Assert.Equal(expected, AddinAllowlistPolicy.MatchesPattern(pattern, location));
 
@@ -100,14 +100,14 @@ public class AddinAllowlistTests
     [InlineData("**")]
     [InlineData("*")]
     [InlineData(@"D:\*")]
-    [InlineData(@"D:\Gits\**\*")]
+    [InlineData(@"C:\Tools\**\*")]
     [InlineData(@"*\MyAddin.dll")]
     [InlineData(@"relative\MyAddin.dll")]
-    [InlineData(@"D:\Gits\..\Other\MyAddin.dll")]
+    [InlineData(@"C:\Tools\..\Other\MyAddin.dll")]
     public void Pattern_Validation_RejectsDangerousPatterns(string pattern)
     {
         Assert.NotNull(AddinAllowlistPolicy.ValidatePattern(pattern));
-        Assert.False(AddinAllowlistPolicy.MatchesPattern(pattern, @"D:\Gits\Whatever\MyAddin.dll"));
+        Assert.False(AddinAllowlistPolicy.MatchesPattern(pattern, @"C:\Tools\Whatever\MyAddin.dll"));
     }
 
     [Fact]

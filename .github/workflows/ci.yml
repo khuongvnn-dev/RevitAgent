@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      REVITAGENT_SKIP_UI_TESTS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            8.0.x
+      - name: Build solution
+        run: dotnet build RevitAgent.slnx -c Release
+      - name: Build Bridge for Revit 2026
+        run: dotnet build src/RevitAgent.Bridge/RevitAgent.Bridge.csproj -c Release -p:RevitVersion=2026
+      - name: Test
+        run: dotnet test tests/RevitAgent.Tests -c Release --no-build

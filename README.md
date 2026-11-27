@@ -69,10 +69,10 @@ src\RevitAgent.Host\bin\Debug\net10.0-windows\RevitAgent.Host.exe   # dashboard:
 | `ribbon_list_items`, `command_post` | | See and run the ribbon button of any add-in. |
 | `sandbox_*` | create_run, copy_model, list_runs | Model copy plus SHA-256 proof the original is unchanged. |
 | `scenario_*`, `recorder_*` | validate, run, list_runs; start, stop, export | Scenarios with checks and reports; record and replay. |
-| `macro_list`, `macro_run` | built-in `create-schedule`, `run-addin-command` | Verified multi-step recipes ([macros](docs/agent-guide/macros.md)). |
+| `macro_list`, `macro_run` | built-in `create-schedule`, `run-addin-command`, `run-revit-command`, `read-schedule` | Verified multi-step recipes ([macros](docs/agent-guide/macros.md)). |
 | `human_ask` | | Ask the owner a question. |
 
-Full catalog: [docs/agent-guide/tool-catalog.md](docs/agent-guide/tool-catalog.md).
+The table lists the main groups only. All 67 tools are in [docs/agent-guide/tool-catalog.md](docs/agent-guide/tool-catalog.md).
 
 ## Safety principles
 
@@ -86,6 +86,7 @@ Enforced by the gateway for every client:
 3. **Models are opened only from the sandbox** (`%REVITAGENT_HOME%\runs`, default `%LOCALAPPDATA%\RevitAgent\runs`) and are never saved over the original.
 4. **Every tool call is audited** (`%LOCALAPPDATA%\RevitAgent\audit\*.jsonl`); a permission ceiling (Read/Interact/Write/Admin) is set on the dashboard.
 5. **No tool runs arbitrary code.**
+6. **The Bridge install is owner-approved.** `bridge_install` writes the add-in manifest and pre-trusts the Bridge's AddInId in Revit's per-user CodeSigning registry key, so Revit does not show the unsigned add-in prompt for the Bridge. It needs owner approval, and `bridge_uninstall` removes the trust entry again.
 
 ## Documentation
 
@@ -101,8 +102,14 @@ Enforced by the gateway for every client:
 ## Status
 
 Verified live on Revit 2024.3 on 2026-11-26 with Claude Code (Haiku and Opus) and Antigravity CLI (Gemini 3.8 Flash).
-Branch `feature/gateway-v2`.
+Early release, Windows only. Tested live on Revit 2024.3; the Bridge builds for Revit 2022-2026.
+
+The Bridge compiles against the community reference-assembly NuGet packages `Nice3point.Revit.Api.*`, so no Revit install is needed to build it, and no Autodesk DLL is shipped in this repository or in its build output.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). Third-party packages: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Security reports: [SECURITY.md](SECURITY.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Trademarks
+
+Autodesk and Revit are registered trademarks of Autodesk, Inc. RevitAgent is an independent project and is not affiliated with, sponsored by or endorsed by Autodesk.

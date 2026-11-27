@@ -162,10 +162,10 @@ public class LiveRevitBridgeTests
                     var refused = await run.Call("doc_close", new { document = titleB }, label: "doc_close_active_b_plain");
                     run.Expect(refused.ErrorCode == "CONFLICT", "doc_close of the active document without activate_other is CONFLICT");
                     var switched = await run.Call("doc_close", new { document = titleB, activate_other = true, activate_document = model }, label: "doc_close_active_b_activate_other");
-                    run.Expect(switched.Ok && switched.Result?["activated"]?["path"]?.GetValue<string>() is { } p && string.Equals(Path.GetFullPath(p), Path.GetFullPath(model), StringComparison.OrdinalIgnoreCase),
+                    run.Expect(switched.Ok && switched.Result?["activated"]?["path"]?.GetValue<string>() is { } p && string.Equals(Path.GetFullPath(p), Path.GetFullPath(model!), StringComparison.OrdinalIgnoreCase),
                         "doc_close activate_other switches to the named already-open document, then closes the active one");
                     var after = await run.Call("doc_info", new { }, label: "doc_info_after_switch");
-                    run.Expect(after.Ok && after.Result?["path"]?.GetValue<string>() is { } ap && string.Equals(Path.GetFullPath(ap), Path.GetFullPath(model), StringComparison.OrdinalIgnoreCase),
+                    run.Expect(after.Ok && after.Result?["path"]?.GetValue<string>() is { } ap && string.Equals(Path.GetFullPath(ap), Path.GetFullPath(model!), StringComparison.OrdinalIgnoreCase),
                         "after the switch the named document is active");
                 }
                 else
