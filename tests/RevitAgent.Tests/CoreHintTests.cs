@@ -45,11 +45,6 @@ public class CoreHintTests
         "src/RevitAgent.Core/Ui/UiaCore.cs",
         "src/RevitAgent.Core/Ui/Script/UiScriptRunner.cs",
         "src/RevitAgent.Core/RunStore/Tools/RunsGetTool.cs",
-
-        // TODO(lead): remove after merge (these three are being reworded in parallel branches)
-        "src/RevitAgent.Core/Revit/RevitReadiness.cs",
-        "src/RevitAgent.Core/Ui/UiSafety.cs",
-        "src/RevitAgent.Core/Tools/ToolRegistry.cs",
     };
 
     private readonly ITestOutputHelper _output;
