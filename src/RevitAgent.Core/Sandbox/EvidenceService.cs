@@ -138,17 +138,36 @@ public sealed class EvidenceService
         return c.Length == 0 ? "x" : c.Length > 60 ? c[..60] : c;
     }
 
-    private static string UniquePath(string dir, string fileName)
-    {
-        var path = Path.Combine(dir, fileName);
-        var stem = Path.GetFileNameWithoutExtension(fileName);
-        var ext = Path.GetExtension(fileName);
-        for (var n = 2; File.Exists(path); n++)
-        {
-            path = Path.Combine(dir, $"{stem}-{n}{ext}");
-        }
+    private static string UniquePath(string dir, string fileName) => Reserve(Path.Combine(dir, fileName));
 
-        return path;
+    /// <summary>
+    /// Atomically claims a file name: creates an empty file at <paramref name="path"/> (creating its folder), or at
+    /// <c>stem-2.ext</c>, <c>stem-3.ext</c>... when the name is taken, and returns the claimed path. The caller then overwrites
+    /// its own reserved file; nothing else can claim the same name meanwhile.
+    /// </summary>
+    public static string Reserve(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var dir = Path.GetDirectoryName(full)!;
+        Directory.CreateDirectory(dir);
+        var stem = Path.GetFileNameWithoutExtension(full);
+        var ext = Path.GetExtension(full);
+        var candidate = full;
+        for (var n = 2; ; n++)
+        {
+            try
+            {
+                using (new FileStream(candidate, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                }
+
+                return candidate;
+            }
+            catch (IOException) when (File.Exists(candidate) && n < 10_000)
+            {
+                candidate = Path.Combine(dir, $"{stem}-{n}{ext}");
+            }
+        }
     }
 
     // ---- index ----
@@ -189,7 +208,7 @@ public sealed class EvidenceService
         }
     }
 
-    /// <summary>Records every file below <paramref name="dir"/> (reports, screenshots of a script run).</summary>
+    /// <summary>Records every file below <paramref name="dir"/> (reports, screenshots of a script run) that its <c>index.jsonl</c> does not list yet.</summary>
     public void RecordDirectory(string dir, string? tool = null, string? sessionId = null, int? pid = null)
     {
         if (!Directory.Exists(dir))
@@ -197,9 +216,40 @@ public sealed class EvidenceService
             return;
         }
 
+        var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (FindEvidenceDir(Path.Combine(Path.GetFullPath(dir), "x")) is { } evidence && File.Exists(Path.Combine(evidence, IndexFile)))
+            {
+                lock (IndexGate)
+                {
+                    foreach (var line in File.ReadLines(Path.Combine(evidence, IndexFile)))
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(line);
+                            if (doc.RootElement.TryGetProperty("file", out var f) && f.GetString() is { } name)
+                            {
+                                known.Add(name);
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+        }
+
         foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
         {
-            Record(f, KindOf(f), tool, sessionId, pid);
+            if (known.Add(Path.GetFullPath(f)))
+            {
+                Record(f, KindOf(f), tool, sessionId, pid);
+            }
         }
     }
 

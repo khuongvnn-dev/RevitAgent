@@ -597,6 +597,16 @@ public sealed class RevitReadiness : IRevitReadiness
             ? Path.Combine(folder, EvidenceService.FileName(EvidenceService.CurrentCaller?.Tool ?? "gateway", $"dialog-{safeTag}-pid{pid}-{window.HwndHex}", ".png"))
             : Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-pid{pid}-{window.HwndHex}-{safeTag}.png");
         var saved = 0;
+        try
+        {
+            path = EvidenceService.Reserve(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+
+        var reserved = path;
         var thread = new Thread(() =>
         {
             try
@@ -625,6 +635,17 @@ public sealed class RevitReadiness : IRevitReadiness
         {
             _evidence.Record(path, "dialog", pid: pid);
             return path;
+        }
+
+        try
+        {
+            if (new FileInfo(reserved).Length == 0)
+            {
+                File.Delete(reserved); // nothing was captured: drop the empty reservation
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
 
         return null;

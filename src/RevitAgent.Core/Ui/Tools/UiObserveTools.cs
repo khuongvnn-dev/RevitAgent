@@ -424,7 +424,7 @@ public sealed class UiScreenshotTool : UiToolBase
     private static Outcome FromBridge(JsonElement res, string path, bool includeImage, int pid, string title)
     {
         int Int(string n) => res.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var i) ? i : 0;
-        if (!File.Exists(path))
+        if (!File.Exists(path) || new FileInfo(path).Length == 0)
         {
             throw GatewayException.NotReady("The Bridge reported an exported view image but the file is missing: " + path);
         }
