@@ -385,7 +385,7 @@ public sealed class RevitReadiness : IRevitReadiness
                     var blockers = WithShot(last, forbidden.Blocker.Hwnd, shot);
                     return Result(pid, false, RevitStates.Modal, GatewayErrorCodes.ModalBlocked,
                         $"Dialog '{forbidden.Blocker.Title}' is in a forbidden category ({forbidden.Blocker.ForbiddenReason}). It was not answered.",
-                        "Do NOT answer it yourself: show the screenshot to the user and ask them to answer it in Revit, then call revit_wait_ready again." +
+                        "Do NOT answer it yourself: show the screenshot to the user and ask them to answer it in Revit, then retry the same call." +
                         (forbidden.Blocker.SavePrompt == true ? " (Only in a Revit the gateway launched, a save prompt of a sandbox copy may be dismissed with revit_handle_dialog button='No' and discard_changes:true.)" : string.Empty),
                         handled, blockers, shots, wall, pipe, rules);
                 }
@@ -465,7 +465,7 @@ public sealed class RevitReadiness : IRevitReadiness
                     : NeedPipe() && pipe == false ? "the RevitAgent Bridge pipe did not appear (add-in not loaded?)"
                     : "state did not stay clear for the settle time";
                 return Result(pid, false, RevitStates.Timeout, GatewayErrorCodes.TargetNotReady, $"Not ready after {timeout.TotalSeconds:0} s: {why}.",
-                    "Call revit_get_state to see the current state; inspect blockers with revit_list_dialogs; retry revit_wait_ready with a longer timeout if Revit is still loading.",
+                    "Inspect blockers with revit_list_dialogs and the screen with ui_screenshot; if Revit is still loading, retry the same call with a longer timeout.",
                     handled, blockers, shots, wall, pipe, rules);
             }
 
@@ -856,7 +856,7 @@ public sealed class RevitReadiness : IRevitReadiness
 
         var year = _launched.Get(pid)?.Year;
         var body = text.Length > MaxNotifyTextChars ? text[..MaxNotifyTextChars] + "…" : text;
-        var message = $"Revit pid {pid}{(year is null ? string.Empty : $" ({year})")}: gateway đã bấm '{button}' trên hộp thoại '{title}' để tiếp tục {operation}." +
+        var message = $"Revit pid {pid}{(year is null ? string.Empty : $" ({year})")}: the gateway clicked '{button}' on the dialog '{title}' to continue {operation}." +
             (body.Length > 0 ? "\n\n" + body : string.Empty);
         var images = shot is not null ? new[] { shot } : null;
         var notifier = _notifier;
@@ -880,7 +880,17 @@ public sealed class RevitReadiness : IRevitReadiness
     }
 
     /// <summary>Title, texts and ENABLED buttons (a disabled "Delete Checked..." does not make Review Warnings forbidden).</summary>
-    private static DialogSafetyVerdict Verdict(WindowInfo w, DialogDetails d) => DialogSafety.ClassifyDialog(w.Title, d);
+    private static DialogSafetyVerdict Verdict(WindowInfo w, DialogDetails d) => VerdictOf(w.Title, d);
+
+    /// <summary>
+    /// Fails closed: a dialog whose text or buttons were read only partially (read budget ran out, UIA did not answer)
+    /// could hide a forbidden word in the unread part, so it is never answerable - a human must answer it.
+    /// </summary>
+    public static DialogSafetyVerdict VerdictOf(string? title, DialogDetails d)
+    {
+        var v = DialogSafety.ClassifyDialog(title, d);
+        return !v.IsForbidden && !d.Complete ? new DialogSafetyVerdict("incomplete read", false) : v;
+    }
 
     private HandledDialog ApplyRule(int pid, WindowInfo window, DialogDetails details, DialogRule rule)
     {
@@ -1019,14 +1029,14 @@ public sealed class RevitReadiness : IRevitReadiness
 
         var year = _launched.Get(pid)?.Year;
         text += $"\n\nRevit pid {pid}{(year is null ? string.Empty : $" ({year})")}. " +
-            (safeLabel is null ? "Không có nút an toàn: hết giờ sẽ không bấm gì." : $"Hết giờ sẽ bấm: {safeLabel}.");
+            (safeLabel is null ? "No safe button: nothing will be clicked on timeout." : $"On timeout the gateway will click: {safeLabel}.");
 
         var configured = _escalation!.DefaultTimeout;
         var askTimeout = configured is { } c && c < remaining ? c : remaining;
         var vanished = false;
         var question = new HumanQuestion(window.Title, text, shot, offered.Select(b => b.Text).ToArray(), safeLabel ?? string.Empty, askTimeout)
         {
-            CancelNote = () => vanished ? "Đã được xử lý trực tiếp trong Revit." : "Đã hủy câu hỏi (phiên chạy đã dừng).",
+            CancelNote = () => vanished ? "Already handled directly in Revit." : "Question cancelled (the run stopped).",
         };
 
         using var askCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -1229,7 +1239,7 @@ public sealed class RevitReadiness : IRevitReadiness
     {
         BlockerKinds.Hung => (GatewayErrorCodes.TargetNotReady,
             $"Revit main window '{b.Title}' is Not Responding (for {b.SeenForSec:0} s).",
-            "Revit may be busy with a long operation: call revit_wait_ready again later. If it never recovers, ask the user before closing it (revit_close)."),
+            "Revit may be busy with a long operation: wait a few seconds and retry the same call. If it never recovers, ask the user before closing it (revit_close)."),
         BlockerKinds.Disabled => (GatewayErrorCodes.ModalBlocked,
             $"Revit main window '{b.Title}' is disabled by a modal window that is not a standard dialog (for {b.SeenForSec:0} s).",
             "Find the modal window with revit_list_dialogs / ui_screenshot and close it with the ui_* tools if it is informational; otherwise ask the user."),

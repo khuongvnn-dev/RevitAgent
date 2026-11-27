@@ -241,7 +241,7 @@ public class EscalationDialogTests
 
         Assert.True(result.Ready, result.Reason);
         Assert.Empty(result.Handled);
-        Assert.Equal("Đã được xử lý trực tiếp trong Revit.", await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal("Already handled directly in Revit.", await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5)));
     }
 
     [DesktopFact] // real dialog windows: skipped with REVITAGENT_SKIP_UI_TESTS=1

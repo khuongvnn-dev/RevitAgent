@@ -132,5 +132,5 @@ public static class UiSafety
         GatewayException.Denied(
             $"Refused: the window \"{title}\" {verdict.Reason}. Security / license / sign-in / recovery / delete / overwrite / replace dialogs " +
             "(and save prompts) are never answered by the gateway - a human must answer it: ask the user to do it themselves, then continue. " +
-            "Read-only tools (ui_snapshot, ui_find, ui_inspect, ui_screenshot, ui_list_windows) still work on it.");
+            "Read-only tools (ui_snapshot, ui_screenshot) still work on it.");
 }
