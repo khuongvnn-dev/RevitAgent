@@ -392,9 +392,11 @@ public static class BridgeToolCatalog
     }
 
     /// <summary>
-    /// A posted command runs only when Revit processes window messages: while its main window sits behind another
-    /// application it can wait indefinitely (live finding 2026-11-25: New Schedule appeared only once Revit was
-    /// activated). Bring the main window to the foreground and report whether that worked.
+    /// A posted command runs from Revit's idle processing, which only turns over when a window message arrives: while its
+    /// main window sits behind another application it can wait indefinitely (live findings 2026-11-25: New Schedule appeared
+    /// only once Revit was activated; 2026-11-27: V/G opened only when a later UIA read touched Revit). So: wake Revit's
+    /// message loop (WM_NULL, no side effect, works without focus), then try to bring the main window to the foreground and
+    /// report whether that worked.
     /// </summary>
     private static JsonElement AfterCommandPost(int pid, JsonElement result)
     {
@@ -402,7 +404,16 @@ public static class BridgeToolCatalog
         try
         {
             var main = RevitAgent.Core.Revit.Win32Windows.FindMainWindow(RevitAgent.Core.Revit.Win32Windows.TopLevelWindows(pid));
+            if (main is not null)
+            {
+                RevitAgent.Core.Revit.Win32Windows.WakeMessageLoop(main.Hwnd);
+            }
+
             activated = main is not null && RevitAgent.Core.Ui.InputSender.Activate(main.Hwnd, pid);
+            if (main is not null && !activated)
+            {
+                RevitAgent.Core.Revit.Win32Windows.WakeMessageLoop(main.Hwnd, count: 2, spacingMs: 250);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -417,7 +428,7 @@ public static class BridgeToolCatalog
         obj["revit_activated"] = activated;
         if (!activated)
         {
-            obj["activation_note"] = "Revit could not be brought to the foreground: the command may start only when Revit gets focus (e.g. after a ui_click on Revit's status bar).";
+            obj["activation_note"] = "Revit is not in the foreground; the gateway woke its message loop so the command can start. If nothing opens within a few seconds, a ui_snapshot of Revit (which also wakes it) or a ui_click on its status bar starts it.";
         }
 
         return JsonSerializer.SerializeToElement(obj);

@@ -190,6 +190,29 @@ public static class Win32Windows
 
     public static IntPtr LastActivePopup(IntPtr owner) => NativeMethods.GetLastActivePopup(owner);
 
+    /// <summary>
+    /// Wakes the message loop of the thread that owns <paramref name="hwnd"/>: posts WM_NULL (no effect on any window)
+    /// <paramref name="count"/> times, <paramref name="spacingMs"/> apart. Revit runs a command queued by PostCommand from its
+    /// idle processing, and an idle loop only turns over when a message arrives: a Revit in the background with no mouse or
+    /// paint traffic can hold a posted command indefinitely (live finding 2026-11-25 / 2026-11-27). PostMessage never blocks,
+    /// even on a hung window. Returns true when at least one post was queued.
+    /// </summary>
+    public static bool WakeMessageLoop(IntPtr hwnd, int count = 3, int spacingMs = 120)
+    {
+        var any = false;
+        for (var i = 0; i < count; i++)
+        {
+            if (i > 0)
+            {
+                Thread.Sleep(spacingMs);
+            }
+
+            any |= NativeMethods.PostMessage(hwnd, NativeMethods.WmNull, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        return any;
+    }
+
     /// <summary>Caption via GetWindowText: for windows of other processes this reads the cached caption without a message.</summary>
     public static string WindowTitle(IntPtr hwnd)
     {

@@ -54,7 +54,7 @@ If you only need the schedule, `macro_run create-schedule {category: "OST_Rooms"
    { "tool": "command_list_postable", "args": { "pid": 12345, "name_contains": "Schedule" } }
    { "tool": "command_post", "args": { "pid": 12345, "command": "ScheduleOrQuantities" } }
    ```
-   The correct name is `ScheduleOrQuantities` (not `ScheduleQuantities`). `command_post` brings Revit to the foreground (`revit_activated:true`); if `false`, the command runs only when Revit has focus: `ui_click` the Revit status bar (bottom left) to activate it. Without the Bridge: click the ribbon tab `id=View` (Revit 2024 ribbon tabs are Buttons with `id=<tab name>`), then the Schedules dropdown.
+   The correct name is `ScheduleOrQuantities` (not `ScheduleQuantities`). `command_post` wakes Revit's message loop (a posted command runs from Revit's idle processing, which a Revit in the background may otherwise not reach) and tries to bring Revit to the foreground (`revit_activated`). If nothing opens within a few seconds, `ui_snapshot` Revit (it also wakes it) or `ui_click` the Revit status bar (bottom left). Without the Bridge: click the ribbon tab `id=View` (Revit 2024 ribbon tabs are Buttons with `id=<tab name>`), then the Schedules dropdown.
 3. The **New Schedule** dialog (its own window; fast to read):
    ```json
    { "tool": "ui_wait", "args": { "pid": 12345, "window": "New Schedule", "state": "appears", "timeout_s": 30 } }
