@@ -13,9 +13,15 @@ public static class UiSafety
     /// <summary>Time budget for reading a dialog's texts before an action.</summary>
     public static readonly TimeSpan ReadBudget = TimeSpan.FromSeconds(3);
 
-    /// <summary>Throws PERMISSION_DENIED when <paramref name="w"/> (the window that will receive input) is a forbidden dialog.</summary>
+    /// <summary>
+    /// Throws PERMISSION_DENIED unless input may go to <paramref name="w"/> (the window that will receive it, after refs and
+    /// selectors were resolved): first the process check (<see cref="UiAutomationService.EnsureInputTarget"/>: never the
+    /// gateway, Revit or an owner-allowed application only, a grant for a Revit the gateway did not launch), then the dialog
+    /// check (forbidden dialogs, and prompts in a UI language the gateway cannot classify).
+    /// </summary>
     public static void EnsureActionAllowed(UiOp op, TopLevelWindow w)
     {
+        op.Service.EnsureInputTarget(w.ProcessId, Sandbox.EvidenceService.CurrentCaller?.Tool ?? "UI input");
         var texts = new List<string>();
         // The application's main window carries ribbon buttons ("Delete", ...) that are not dialog content: title only.
         bool main = false;
@@ -27,17 +33,26 @@ public static class UiSafety
         {
         }
 
+        var unrecognized = false;
         if (!main)
         {
             try
             {
                 var own = DialogOwnText(op, op.Core.FromHandle(w.Hwnd), ReadBudget);
                 texts.AddRange(ClassifiedTexts(own.Texts, own.Buttons, own.IsForm));
+
+                // A modal prompt in another UI language (a German "Immer laden"): its forbidden terms cannot be checked.
+                unrecognized = w.IsModalDialog && !own.IsForm && own.Buttons.Count > 0 && !DialogSafety.IsRecognizedLanguage(w.Title, own.Buttons);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Could not read the window content: the title alone is classified.
             }
+        }
+
+        if (unrecognized)
+        {
+            throw Refusal(w.Title, DialogSafetyVerdict.UnrecognizedLanguage); // fail closed: a human answers it
         }
 
         EnsureAllowed(w.Title, texts);

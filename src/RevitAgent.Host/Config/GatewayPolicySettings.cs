@@ -32,5 +32,19 @@ public static class GatewayPolicySettings
         ArgumentNullException.ThrowIfNull(policy);
         policy.MaxPermission = ParsePermission(config.GatewayMaxPermission);
         policy.EnforceSandbox = config.GatewayEnforceSandbox;
+        policy.SetAllowedInputProcesses(CleanProcessNames(config.GatewayAllowedInputProcesses));
     }
+
+    /// <summary>"notepad, Foo.exe; bar" → ["notepad", "Foo", "bar"] (separators: comma, semicolon, new line).</summary>
+    public static List<string> ParseProcessList(string? text) =>
+        CleanProcessNames((text ?? string.Empty).Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+
+    /// <summary>Trimmed, without ".exe", no empty or repeated names.</summary>
+    public static List<string> CleanProcessNames(IEnumerable<string?>? names) =>
+        (names ?? Array.Empty<string?>())
+            .Select(n => (n ?? string.Empty).Trim())
+            .Select(n => n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? n[..^4].Trim() : n)
+            .Where(n => n.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

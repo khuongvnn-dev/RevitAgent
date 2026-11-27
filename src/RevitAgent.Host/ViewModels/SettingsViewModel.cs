@@ -46,6 +46,10 @@ namespace RevitAgent.Host.ViewModels
         [ObservableProperty]
         private bool _enforceSandbox = true;
 
+        /// <summary>Comma-separated process names (besides Revit) that ui_* input may reach. Empty = Revit only.</summary>
+        [ObservableProperty]
+        private string _allowedInputProcesses = string.Empty;
+
         [ObservableProperty]
         private string _runStoreRoot = string.Empty;
 
@@ -185,6 +189,7 @@ namespace RevitAgent.Host.ViewModels
                 IpcPipeName = string.IsNullOrWhiteSpace(cfg.IpcPipeName) ? IpcConstants.DefaultMcpPipeName : cfg.IpcPipeName;
                 SelectedMaxPermission = GatewayPolicySettings.ParsePermission(cfg.GatewayMaxPermission).ToString();
                 EnforceSandbox = cfg.GatewayEnforceSandbox;
+                AllowedInputProcesses = string.Join(", ", GatewayPolicySettings.CleanProcessNames(cfg.GatewayAllowedInputProcesses));
                 RunStoreRoot = RunStoreOptions.Load(_paths).GetEffectiveRoot(_paths);
                 ScenarioLibraryDir = ScenarioLibraryOptions.GetEffectiveLibraryDir(_paths);
                 GatewayPolicySettings.Apply(cfg, _policy);
@@ -235,6 +240,7 @@ namespace RevitAgent.Host.ViewModels
                     IpcPipeName = string.IsNullOrWhiteSpace(IpcPipeName) ? IpcConstants.DefaultMcpPipeName : IpcPipeName.Trim(),
                     GatewayMaxPermission = GatewayPolicySettings.ParsePermission(SelectedMaxPermission).ToString(),
                     GatewayEnforceSandbox = EnforceSandbox,
+                    GatewayAllowedInputProcesses = GatewayPolicySettings.ParseProcessList(AllowedInputProcesses),
                 };
 
                 if (_notificationService != null)

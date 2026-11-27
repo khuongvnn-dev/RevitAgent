@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using RevitAgent.Contracts.Protocol;
 using RevitAgent.Core.Scenario;
 
 namespace RevitAgent.Tests.Scenarios;
@@ -208,6 +209,22 @@ public class ScenarioRunTests
         Assert.Equal(FakeRevit.LaunchedPid, host.Revit.Last("revit_close").GetProperty("pid").GetInt32());
         Assert.Equal(1, host.Revit.Count("revit_close"));
         Assert.Equal(0, host.Revit.Count("doc_open"));
+    }
+
+    [Theory]
+    [InlineData(GatewayErrorCodes.PermissionDenied)] // the policy refused: never kill after that
+    [InlineData(GatewayErrorCodes.Timeout)]          // the process is not in the launched registry: not ours to kill
+    public async Task FailedRevitClose_NeverFallsBackToKillingAProcessTheGatewayDoesNotOwn(string code)
+    {
+        await using var host = new ScenarioHost();
+        host.Revit.CloseError = code;
+        var s = await host.CallOkAsync("scenario_run", new { scenario_dir = LevelsScenario(), launch = true });
+
+        Assert.Equal(1, host.Revit.Count("revit_close"));
+        var cleanup = s.GetProperty("cleanup");
+        Assert.False(cleanup.GetProperty("revit_closed").GetBoolean());
+        Assert.False(cleanup.TryGetProperty("revit_killed", out _));
+        Assert.Contains(code, cleanup.GetProperty("revit_close_error").GetString());
     }
 
     [Fact]

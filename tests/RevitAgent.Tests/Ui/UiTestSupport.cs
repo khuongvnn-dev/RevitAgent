@@ -195,6 +195,9 @@ public sealed class UiHarness : IDisposable
 
     public AgentPaths Paths { get; }
 
+    /// <summary>The gateway's services (for example its <c>GatewayPolicy</c>).</summary>
+    public IServiceProvider Services => _sp;
+
     public UiTestApp App { get; }
 
     public ToolRegistry Registry { get; }

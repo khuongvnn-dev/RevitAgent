@@ -12,8 +12,10 @@ namespace RevitAgent.Bridge
     /// <summary>
     /// RevitAgent Bridge add-in (v2). Always on when loaded: at startup it opens the per-process pipe
     /// <c>\\.\pipe\revitagent-bridge-&lt;pid&gt;</c> (current user only) and serves Bridge tools to the
-    /// RevitAgent gateway. It does not change Revit's behaviour: no dialog overrides, no sync blocking,
-    /// no failure processing; DialogBoxShowing is only recorded. Startup is fast and never throws.
+    /// RevitAgent gateway. In a Revit the user started it does not change Revit's behaviour: no dialog overrides,
+    /// no sync blocking, no failure processing; DialogBoxShowing is only recorded. Only in a Revit the gateway launched
+    /// with sandbox enforcement on, <see cref="SaveGuardEvents"/> cancels saves outside the sandbox and sync with central.
+    /// Startup is fast and never throws.
     /// </summary>
     public sealed class BridgeApplication : IExternalApplication
     {
@@ -21,6 +23,7 @@ namespace RevitAgent.Bridge
         private DialogEventRecorder? _dialogs;
         private RevitExecutor? _executor;
         private BridgeServerCore? _server;
+        private SaveGuardEvents? _saveGuard;
 
         public Result OnStartup(UIControlledApplication application)
         {
@@ -36,6 +39,7 @@ namespace RevitAgent.Bridge
                 _executor = new RevitExecutor(registry, _log);
                 _executor.CreateEvent();
                 application.DialogBoxShowing += _dialogs.OnDialogBoxShowing;
+                _saveGuard = SaveGuardEvents.TryAttach(ca, _log);
 
                 var pipeName = BridgePipeNames.ForProcess(pid);
                 _server = new BridgeServerCore(pipeName, BridgePipeFactory.Create(pipeName), _executor, _log);
@@ -71,6 +75,8 @@ namespace RevitAgent.Bridge
                 {
                     application.DialogBoxShowing -= _dialogs.OnDialogBoxShowing;
                 }
+
+                _saveGuard?.Detach(application.ControlledApplication);
 
                 _server?.Stop();
                 _executor?.DisposeEvent();

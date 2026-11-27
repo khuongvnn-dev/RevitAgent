@@ -13,12 +13,16 @@ public sealed class RevitCloseTool : GatewayTool
 
     public override string Description =>
         "Close a Revit the gateway launched: WM_CLOSE, wait grace_sec, kill. A save prompt gets No only with discard_changes:true, " +
-        "else MODAL_BLOCKED; a harmless dialog in the way gets Close/Later (handled). A Revit the gateway did not launch is refused (PERMISSION_DENIED) " +
-        "unless the user explicitly asked: force_foreign + confirm_pid. Never saves.";
+        "else MODAL_BLOCKED; a harmless dialog gets Close/Later (handled). A Revit the gateway did not launch is refused (PERMISSION_DENIED) " +
+        "unless the user explicitly asked: force_foreign + confirm_pid; foreign Revit: owner approval, graceful only. Never saves.";
 
     public override ToolPermission Permission => ToolPermission.Admin;
 
     public override TimeSpan Timeout => TimeSpan.FromMinutes(6);
+
+    // A foreign close first waits for the owner's answer (dashboard / Telegram).
+    public override TimeSpan TimeoutFor(ToolCall call) =>
+        call.GetBool("force_foreign") ? Timeout + Policy.OwnerApprovalRequest.DefaultTimeout + TimeSpan.FromSeconds(15) : Timeout;
 
     protected override Schema BuildSchema() => Schema.Object()
         .Pid()
@@ -38,6 +42,7 @@ public sealed class RevitCloseTool : GatewayTool
             ForceForeign = call.GetBool("force_foreign"),
             ConfirmPid = call.GetInt("confirm_pid"),
             ForceKill = call.GetBool("force_kill"),
+            SessionId = call.SessionId,
         };
 
         return ToolResult.Json(await _processes.CloseAsync(request, cancellationToken).ConfigureAwait(false));

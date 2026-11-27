@@ -272,6 +272,29 @@ public class OwnerApprovalTests
     }
 
     [Fact]
+    public async Task RevitCloseRequest_IsDescribedAsAClose_OnTelegramAndTheDashboard()
+    {
+        var request = RevitProcessService.ForeignCloseApproval(new CloseRequest { Pid = 4242, SessionId = "agent-1" }, 2024, "Autodesk Revit 2024 - [Tower - Level 1]");
+
+        var escalation = new FakeEscalation { Answer = Answered("Deny") };
+        var channel = new TelegramOwnerApprovalChannel(escalation, new TelegramConfigStore(new AgentPaths(TestGateway.NewTempDir("revitagent_tg_"))));
+        await channel.AskAsync(request, CancellationToken.None);
+        Assert.Contains("pid 4242", escalation.Asked!.Text);
+        Assert.DoesNotContain("add-ins folder", escalation.Asked.Text); // only Bridge install / uninstall change it
+
+        var dashboard = new DashboardApprovalChannel();
+        var localization = new RevitAgent.Host.Services.LocalizationService();
+        localization.SetLanguage("en-US");
+        var vm = new RevitAgent.Host.ViewModels.OwnerApprovalViewModel(dashboard, localization);
+        var pending = dashboard.AskAsync(request, CancellationToken.None);
+        var row = Assert.Single(vm.Rows);
+        Assert.Contains("pid 4242", row.Text);
+        Assert.DoesNotContain("install", row.Text, StringComparison.OrdinalIgnoreCase);
+        dashboard.Resolve(row.Item, approved: false);
+        Assert.False((await pending).Approved);
+    }
+
+    [Fact]
     public void BridgeTools_SayApprovalIsRequired()
     {
         using var rig = new Rig(null);

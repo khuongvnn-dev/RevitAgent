@@ -524,8 +524,7 @@ public sealed class UiScreenshotTool : UiToolBase
             try
             {
                 var shot = cropped ?? fullImage;
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.WriteAllBytes(path, WindowCapture.EncodePng(shot));
+                UiPaths.WriteNew(path, WindowCapture.EncodePng(shot)); // never overwrites an existing file
                 byte[]? png = null;
                 double scale = 1;
                 int iw = shot.Width, ih = shot.Height;
@@ -572,13 +571,7 @@ public sealed class UiScreenshotTool : UiToolBase
                 : Path.Combine(Ui.Paths.CapturesDir, $"ui_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
         }
 
-        var full = UiPaths.Evidence(Ui.Paths, requested, Ui.Paths.CapturesDir);
-        if (!full.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-        {
-            full += ".png";
-        }
-
-        return full;
+        return UiPaths.NewImageFile(Ui.Paths, requested, Ui.Paths.CapturesDir); // a new .png only (CONFLICT when it exists)
     }
 }
 

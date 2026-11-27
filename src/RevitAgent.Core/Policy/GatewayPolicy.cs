@@ -10,6 +10,7 @@ namespace RevitAgent.Core.Policy;
 public sealed class GatewayPolicy
 {
     private readonly HashSet<string> _deniedTools = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _allowedInputProcesses = new();
     private readonly object _gate = new();
 
     /// <summary>Highest permission a tool may have to run. Default: everything (the user's own tool).</summary>
@@ -20,6 +21,42 @@ public sealed class GatewayPolicy
 
     /// <summary>Extra folders (besides the runs folder) treated as sandbox, e.g. a team suites_dir.</summary>
     public List<string> ExtraSandboxRoots { get; } = new();
+
+    /// <summary>
+    /// Process names (without .exe) besides Revit that ui_* input may reach, set by the owner. Default empty: input goes to
+    /// Revit only. The gateway's own processes are never reachable, whatever this list holds (<see cref="InputTargetGuard"/>).
+    /// </summary>
+    public IReadOnlyList<string> AllowedInputProcesses
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _allowedInputProcesses.ToArray();
+            }
+        }
+    }
+
+    /// <summary>Replaces <see cref="AllowedInputProcesses"/> (dashboard settings; tests add their helper processes).</summary>
+    public void SetAllowedInputProcesses(IEnumerable<string>? names)
+    {
+        var clean = (names ?? Array.Empty<string>()).Select(StripExe).Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        lock (_gate)
+        {
+            _allowedInputProcesses.Clear();
+            _allowedInputProcesses.AddRange(clean);
+        }
+    }
+
+    /// <summary>True when <paramref name="processName"/> is on <see cref="AllowedInputProcesses"/> (".exe" and case ignored).</summary>
+    public bool IsInputProcessAllowed(string? processName)
+    {
+        var name = StripExe(processName);
+        lock (_gate)
+        {
+            return name.Length > 0 && _allowedInputProcesses.Contains(name, StringComparer.OrdinalIgnoreCase);
+        }
+    }
 
     public void Deny(string toolName)
     {
@@ -73,17 +110,7 @@ public sealed class GatewayPolicy
             return false;
         }
 
-        IEnumerable<string> roots;
-        lock (_gate)
-        {
-            var configuredRoot = RunStoreOptions.Load(paths).GetEffectiveRoot(paths);
-            roots = ExtraSandboxRoots
-                .Append(configuredRoot)
-                .Append(paths.RunsDir)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-        }
-
+        var roots = SandboxRoots(paths);
         if (full.StartsWith(@"\\", StringComparison.Ordinal))
         {
             return false; // UNC / device paths are never sandbox paths.
@@ -102,6 +129,27 @@ public sealed class GatewayPolicy
         }
 
         return false;
+    }
+
+    /// <summary>Every sandbox root (full paths): extra roots, the configured run-data root and the runs folder.</summary>
+    public IReadOnlyList<string> SandboxRoots(AgentPaths paths)
+    {
+        lock (_gate)
+        {
+            var configuredRoot = RunStoreOptions.Load(paths).GetEffectiveRoot(paths);
+            return ExtraSandboxRoots
+                .Append(configuredRoot)
+                .Append(paths.RunsDir)
+                .Select(r => Path.GetFullPath(r).TrimEnd('\\', '/'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+    }
+
+    private static string StripExe(string? name)
+    {
+        var n = (name ?? string.Empty).Trim();
+        return n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? n[..^4].Trim() : n;
     }
 
     private static bool HasReparsePoint(string rootFull, string full)

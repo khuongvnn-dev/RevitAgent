@@ -19,13 +19,16 @@ public sealed record OwnerApprovalRequest(string Tool, string SessionId, IReadOn
 
     public string YearsText => Years.Count == 0 ? "no installed version" : string.Join(", ", Years);
 
+    /// <summary>What exactly is asked (for example the pid, open documents and consequences of revit_close); appended to <see cref="Describe"/>.</summary>
+    public string? Detail { get; init; }
+
     /// <summary>English one-liner shown to the owner on every channel.</summary>
     public string Describe() => Tool switch
     {
         "bridge_uninstall" => $"'{SessionId}' asks to UNINSTALL the RevitAgent Bridge for Revit {YearsText}",
         "bridge_install" => $"'{SessionId}' asks to install the RevitAgent Bridge for Revit {YearsText}",
         _ => $"'{SessionId}' asks to run {Tool} for Revit {YearsText}",
-    };
+    } + (string.IsNullOrWhiteSpace(Detail) ? string.Empty : ": " + Detail);
 }
 
 /// <summary>The owner's decision (or the reason there was none). Anything but <see cref="Approved"/> is a deny.</summary>

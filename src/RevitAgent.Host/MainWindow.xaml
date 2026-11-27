@@ -1384,6 +1384,10 @@
                                           ToolTip="{DynamicResource Str_Tooltip_EnforceSandbox}"
                                           IsChecked="{Binding Settings.EnforceSandbox, Mode=TwoWay}"/>
                                 <TextBlock Text="{DynamicResource Str_NoteEnforceSandbox}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11" Margin="22,0,0,12"/>
+                                <TextBlock Text="{DynamicResource Str_LblAllowedInputProcesses}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox Margin="0,0,0,4" ToolTip="{DynamicResource Str_Tooltip_AllowedInputProcesses}"
+                                         Text="{Binding Settings.AllowedInputProcesses, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="{DynamicResource Str_NoteAllowedInputProcesses}" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSubtle}" FontSize="11" Margin="0,0,0,12"/>
 
                                 <Separator Background="{DynamicResource BrushCardBorder}" Margin="0,0,0,16"/>
 

@@ -58,6 +58,30 @@ public class SettingsPolicyTests
     }
 
     [Fact]
+    public void AllowedInputProcesses_DefaultEmpty_AreParsedAppliedAndPersisted()
+    {
+        Assert.Empty(new AppConfig().GatewayAllowedInputProcesses);
+        Assert.Empty(new GatewayPolicy().AllowedInputProcesses);
+        Assert.Equal(new[] { "notepad", "Foo", "bar" }, GatewayPolicySettings.ParseProcessList(" notepad, Foo.exe;\nbar , NOTEPAD.EXE,"));
+
+        using var rig = new HostRig();
+        var policy = new GatewayPolicy();
+        var vm = rig.NewSettings(policy);
+        Assert.Equal(string.Empty, vm.AllowedInputProcesses);
+
+        vm.AllowedInputProcesses = "notepad.exe, mspaint";
+        vm.SaveConfigCommand.Execute(null);
+        Assert.True(vm.IsConfigStatusSuccess);
+        Assert.Equal(new[] { "notepad", "mspaint" }, policy.AllowedInputProcesses);
+        Assert.Equal(new[] { "notepad", "mspaint" }, rig.Config.LoadConfig().GatewayAllowedInputProcesses);
+
+        var nextPolicy = new GatewayPolicy();
+        var next = rig.NewSettings(nextPolicy);
+        Assert.Equal("notepad, mspaint", next.AllowedInputProcesses);
+        Assert.True(nextPolicy.IsInputProcessAllowed("MSPaint.exe"));
+    }
+
+    [Fact]
     public async Task LoweredMaxPermission_IsEnforcedByTheToolRegistry()
     {
         using var rig = new HostRig();

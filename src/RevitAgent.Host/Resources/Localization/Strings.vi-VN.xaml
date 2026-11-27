@@ -272,6 +272,12 @@
 
     <sys:String x:Key="Str_NoteEnforceSandbox">Công cụ ghi chỉ làm việc trên bản sao mô hình trong thư mục runs.</sys:String>
 
+    <sys:String x:Key="Str_LblAllowedInputProcesses">Ứng dụng khác AI được bấm và gõ (ngoài Revit):</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_AllowedInputProcesses">Tên tiến trình không có .exe, cách nhau bằng dấu phẩy (ví dụ notepad). Để trống = chỉ Revit. Không thể thêm chính RevitAgent.</sys:String>
+
+    <sys:String x:Key="Str_NoteAllowedInputProcesses">Nên để trống: khi đó AI chỉ thao tác được trên Revit. Việc đọc mọi cửa sổ vẫn hoạt động.</sys:String>
+
 
 
 
@@ -319,7 +325,8 @@
     <sys:String x:Key="Str_CardOwnerApproval">Yêu cầu cần duyệt</sys:String>
     <sys:String x:Key="Str_ApprovalInstallFmt">{0} xin cài RevitAgent Bridge cho Revit {1}.</sys:String>
     <sys:String x:Key="Str_ApprovalUninstallFmt">{0} xin GỠ RevitAgent Bridge của Revit {1}.</sys:String>
-    <sys:String x:Key="Str_NoteOwnerApproval">Thay đổi thư mục add-in Revit dùng chung của máy này. Không trả lời trong 5 phút = từ chối.</sys:String>
+    <sys:String x:Key="Str_ApprovalCloseRevitFmt">{0} xin ĐÓNG một Revit do bạn mở: {1}.</sys:String>
+    <sys:String x:Key="Str_NoteOwnerApproval">Chỉ chủ máy được cho phép việc này. Không trả lời trong 5 phút = từ chối.</sys:String>
     <sys:String x:Key="Str_BtnApprove">Cho phép</sys:String>
     <sys:String x:Key="Str_BtnDeny">Từ chối</sys:String>
     <sys:String x:Key="Str_BtnRevokeGrant">Thu hồi</sys:String>

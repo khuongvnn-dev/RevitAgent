@@ -101,6 +101,9 @@ public sealed class FakeRevit
 
     public bool LaunchStarted { get; set; }
 
+    /// <summary>revit_close fails with this error code (null: it closes).</summary>
+    public string? CloseError { get; set; }
+
     /// <summary>doc_open opens the document but then fails with a timeout.</summary>
     public bool DocOpenFailsAfterOpen { get; set; }
 
@@ -161,7 +164,7 @@ public sealed class FakeRevit
             return new { pid = LaunchedPid, year = c.GetInt("year") };
         },
             () => Schema.Object().Integer("year", "year", required: true));
-        yield return new FakeTool("revit_close", ToolPermission.Admin, _ => new { closed = true }, () => Schema.Object().Pid().Boolean("discard_changes", "d"));
+        yield return new FakeTool("revit_close", ToolPermission.Admin, _ => CloseError is { } code ? throw new GatewayException(code, "revit_close failed: " + code) : new { closed = true }, () => Schema.Object().Pid().Boolean("discard_changes", "d"));
         yield return new FakeTool("revit_wait_ready", ToolPermission.Read, _ => new { ready = true }, () => Schema.Object().Pid().Integer("timeout_sec", "t"));
         yield return new FakeTool("revit_get_state", ToolPermission.Read, _ => State?.Invoke(StateCalls++) ?? new { state = "ready", pid = ExistingPid }, () => Schema.Object().Pid());
         yield return new FakeTool("revit_list_instances", ToolPermission.Read, _ => new { instances = new List<object> { new { pid = ExistingPid, year = 2024, launched_by_gateway = false } }.Concat(LaunchStarted ? new object[] { new { pid = LaunchedPid, year = 2024, launched_by_gateway = true } } : Array.Empty<object>()).ToArray() }, () => Schema.Object());

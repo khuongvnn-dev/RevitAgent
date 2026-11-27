@@ -22,6 +22,16 @@ namespace RevitAgent.Bridge.Tools
 
             var target = ctx.Args.Str("save_path") ?? throw ToolArgs.Invalid("'save_path' is required (the gateway fills it in).");
             target = Path.GetFullPath(target);
+            if (!string.Equals(Path.GetExtension(target), ".png", StringComparison.OrdinalIgnoreCase))
+            {
+                throw ToolArgs.Invalid("'save_path' must be a .png file.");
+            }
+
+            // New files only: an existing file (evidence, run data) is never replaced or deleted by an export.
+            if (File.Exists(target) || Directory.Exists(target))
+            {
+                throw new BridgeToolException(GatewayErrorCodes.Conflict, "'" + target + "' already exists; view_export_image only writes new files. Pick another save_path.");
+            }
 
             var view = ResolveView(ctx, doc);
             if (view.IsTemplate || view.ViewType == ViewType.Schedule || view.ViewType == ViewType.ProjectBrowser || view.ViewType == ViewType.SystemBrowser)
@@ -66,12 +76,15 @@ namespace RevitAgent.Bridge.Tools
                 }
 
                 var source = produced.OrderByDescending(f => new FileInfo(f).Length).First();
-                if (File.Exists(target))
+                try
                 {
-                    File.Delete(target);
+                    File.Move(source, target); // never overwrites: fails when the target appeared meanwhile
+                }
+                catch (IOException) when (File.Exists(target))
+                {
+                    throw new BridgeToolException(GatewayErrorCodes.Conflict, "'" + target + "' already exists; view_export_image only writes new files. Pick another save_path.");
                 }
 
-                File.Move(source, target);
                 var size = PngSize(target);
                 return new WireObject
                 {

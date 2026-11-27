@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using RevitAgent.Contracts.Protocol;
 using RevitAgent.Core.Tools;
 
@@ -50,6 +51,33 @@ public class UiToolsDesktopTests
         // read-only tools still work on such a window
         Assert.False((await h.CallRawAsync("ui_snapshot", new { pid = h.Pid })).IsError);
         Assert.False((await h.CallRawAsync("ui_list_windows", new { pid = h.Pid })).IsError);
+    }
+
+    [DesktopFact]
+    public async Task ProcessNotAllowedForInput_IsRefused_EvenThroughARefWithoutPid_ButReadsStayAllowed()
+    {
+        using var h = UiHarness.Start();
+        var snap = await h.SnapshotTextAsync(); // the app becomes the session's current window
+        var countRef = UiHarness.RefOf(snap, "id=btnCount");
+        h.Services.GetRequiredService<RevitAgent.Core.Policy.GatewayPolicy>().SetAllowedInputProcesses(Array.Empty<string>()); // owner default: Revit only
+
+        foreach (var (tool, args) in new (string, object)[]
+        {
+            ("ui_click", new { @ref = countRef }), // no pid: resolved from the session's current window
+            ("ui_click", new { pid = h.Pid, selector = "id=btnCount" }),
+            ("ui_keys", new { keys = "{TAB}" }),
+            ("ui_type", new { pid = h.Pid, selector = "id=txtName", text = "x" }),
+            ("ui_run_script", new { pid = h.Pid, script = new { steps = new object[] { new { action = "keys", keys = "{TAB}" } } } }),
+        })
+        {
+            var r = await h.CallRawAsync(tool, args);
+            Assert.True(r.IsError, $"{tool}: {UiHarness.Text(r)}");
+            Assert.Equal("PERMISSION_DENIED", r.ErrorCode);
+        }
+
+        Assert.False((await h.CallRawAsync("ui_snapshot", new { pid = h.Pid })).IsError);
+        Assert.False((await h.CallRawAsync("ui_find", new { pid = h.Pid, selector = "id=btnCount" })).IsError);
+        await h.ExpectAsync(new { pid = h.Pid, selector = "id=lblCount", text = "Clicks: 0", exact = true }); // nothing was clicked
     }
 
     [DesktopFact]

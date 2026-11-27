@@ -32,16 +32,13 @@ public static class ViewExportImageSupport
                 : Path.Combine(paths.CapturesDir, $"view_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
         }
 
-        string full;
         try
         {
-            full = UiPaths.Evidence(paths, requested, paths.CapturesDir);
+            return UiPaths.NewImageFile(paths, requested, paths.CapturesDir); // a new .png only (CONFLICT when it exists)
         }
         catch (GatewayException ex) when (ex.Code == Contracts.Protocol.GatewayErrorCodes.PermissionDenied)
         {
             throw new GatewayException(Contracts.Protocol.GatewayErrorCodes.SandboxViolation, ex.Message, ex.Details);
         }
-
-        return full.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? full : full + ".png";
     }
 }

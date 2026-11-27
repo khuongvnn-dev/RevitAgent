@@ -12,7 +12,7 @@ public sealed class ActionGrantViewModelTests
     [Fact]
     public void Rows_ListOnlyForeignRevit_GrantAndRevokeWork_AndGoneRevitLosesItsGrant()
     {
-        var store = new ActionGrantStore();
+        var store = new ActionGrantStore(TimeProvider.System, pid => pid == 10 ? new DateTime(2026, 11, 25, 8, 0, 0) : null); // pid 10 = a fake running Revit
         var vm = new ActionGrantViewModel(store, new LocalizationService());
         vm.Update(new[] { Item(10, false), Item(11, true) });
         Assert.Equal(new int?[] { null, 10 }, vm.Rows.Select(r => r.Pid).ToArray());

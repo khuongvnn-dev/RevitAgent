@@ -13,9 +13,20 @@ internal sealed class FakeRevitProbe : IRevitProcessProbe
 {
     private readonly Dictionary<int, RevitProcessInfo> _processes = new();
 
-    public FakeRevitProbe Add(int pid, string name = "Revit", int? year = 2024)
+    public static readonly DateTime DefaultStart = new(2026, 11, 25, 8, 0, 0, DateTimeKind.Local);
+
+    public FakeRevitProbe Add(int pid, string name = "Revit", int? year = 2024, DateTime? start = null, string? exePath = null)
     {
-        _processes[pid] = new RevitProcessInfo(pid, name, $@"C:\Fake\Revit {year}\{name}.exe", year, DateTime.Now);
+        _processes[pid] = new RevitProcessInfo(pid, name, exePath ?? $@"C:\Fake\Revit {year}\{name}.exe", year, start ?? DefaultStart);
+        return this;
+    }
+
+    /// <summary>The process with <paramref name="pid"/> exits and another process reuses the pid (new start time).</summary>
+    public FakeRevitProbe Reuse(int pid, string name = "Revit") => Add(pid, name, start: DefaultStart.AddHours(1));
+
+    public FakeRevitProbe Remove(int pid)
+    {
+        _processes.Remove(pid);
         return this;
     }
 

@@ -54,5 +54,11 @@ public sealed class AppConfig
     /// <summary>When true, Write tools may only touch documents inside the sandbox (runs folder). Applied to <c>GatewayPolicy.EnforceSandbox</c>.</summary>
     public bool GatewayEnforceSandbox { get; set; } = true;
 
+    /// <summary>
+    /// Process names besides Revit that ui_* input may reach (default empty = Revit only). Applied to
+    /// <c>GatewayPolicy.AllowedInputProcesses</c>; the gateway's own processes stay unreachable whatever is listed.
+    /// </summary>
+    public List<string> GatewayAllowedInputProcesses { get; set; } = new();
+
     public string IpcPipeName { get; set; } = IpcConstants.DefaultMcpPipeName;
 }

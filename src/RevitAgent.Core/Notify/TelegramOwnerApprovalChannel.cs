@@ -28,7 +28,8 @@ public sealed class TelegramOwnerApprovalChannel : IOwnerApprovalChannel
     {
         var question = new HumanQuestion(
             "Owner approval required",
-            request.Describe() + ". It changes the shared Revit add-ins folder of this machine. No answer in " + (int)request.Timeout.TotalMinutes + " minutes = denied.",
+            request.Describe() + (request.Tool.StartsWith("bridge_", StringComparison.Ordinal) ? ". It changes the shared Revit add-ins folder of this machine" : string.Empty) +
+            ". No answer in " + (int)request.Timeout.TotalMinutes + " minutes = denied.",
             null,
             new[] { ApproveOption, DenyOption },
             DenyOption,

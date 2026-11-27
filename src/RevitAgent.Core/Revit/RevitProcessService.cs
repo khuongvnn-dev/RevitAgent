@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using RevitAgent.Contracts.Bridge;
 using RevitAgent.Contracts.Protocol;
 using RevitAgent.Core.Revit.Native;
 using RevitAgent.Core.Tools;
@@ -111,6 +112,9 @@ public sealed record CloseRequest
     public int? ConfirmPid { get; init; }
 
     public bool ForceKill { get; init; }
+
+    /// <summary>MCP session asking (shown to the owner when a foreign close needs approval).</summary>
+    public string SessionId { get; init; } = "unknown";
 }
 
 public sealed record CloseResult
@@ -138,20 +142,34 @@ public sealed class RevitProcessService : IDisposable
     public const string BridgeManifestName = "RevitAgent.Bridge.addin";
 
     private static readonly string[] ForbiddenArgExtensions = { ".rvt", ".rfa", ".rte", ".rft", ".rvtx", ".rws", ".adsk", ".ifc", ".dwg", ".txt", ".jrn" };
+    private static readonly object EnvironmentGate = new();
 
     private readonly LaunchedProcessRegistry _launched;
     private readonly RevitReadiness _readiness;
     private readonly DialogRuleProvider _rules;
     private readonly GatewayEvents _events;
+    private readonly Policy.IOwnerApproval? _approval;
+    private readonly Policy.GatewayPolicy? _policy;
+    private readonly AgentPaths? _paths;
     private readonly object _jobGate = new();
     private KillOnCloseJob? _job;
 
-    public RevitProcessService(LaunchedProcessRegistry launched, RevitReadiness readiness, DialogRuleProvider rules, GatewayEvents events)
+    public RevitProcessService(
+        LaunchedProcessRegistry launched,
+        RevitReadiness readiness,
+        DialogRuleProvider rules,
+        GatewayEvents events,
+        Policy.IOwnerApproval? approval = null,
+        Policy.GatewayPolicy? policy = null,
+        AgentPaths? paths = null)
     {
         _launched = launched;
         _readiness = readiness;
         _rules = rules;
         _events = events;
+        _approval = approval; // null = no owner channel: a foreign close is always denied
+        _policy = policy;
+        _paths = paths;
     }
 
     /// <summary>Every Revit.exe process. Message-free: nothing is sent to the processes.</summary>
@@ -217,7 +235,7 @@ public sealed class RevitProcessService : IDisposable
         Process process;
         try
         {
-            process = Process.Start(psi) ?? throw GatewayException.Dependency($"Revit {install.Year} did not start.");
+            process = StartWithEnvironment(psi, LaunchEnvironment()) ?? throw GatewayException.Dependency($"Revit {install.Year} did not start.");
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
@@ -294,10 +312,13 @@ public sealed class RevitProcessService : IDisposable
     }
 
     /// <summary>
-    /// Closes a Revit the gateway launched (or a foreign one with explicit confirmation): WM_CLOSE to the main window,
-    /// answers a save prompt with "don't save" only when <see cref="CloseRequest.DiscardChanges"/>, kills after the grace period.
-    /// In a Revit the gateway launched, a harmless dialog in the way gets its Close / Later / Not now button pressed
+    /// Closes a Revit the gateway launched: WM_CLOSE to the main window, answers a save prompt with "don't save" only when
+    /// <see cref="CloseRequest.DiscardChanges"/>, kills after the grace period (or at once with force_kill). In a Revit the
+    /// gateway launched, a harmless dialog in the way gets its Close / Later / Not now button pressed
     /// (<see cref="RevitReadiness.TrySafeDismiss"/>; never Cancel, which would cancel the close).
+    /// A Revit the gateway did NOT launch (the user's own) needs force_foreign + confirm_pid (the agent's request) AND the
+    /// owner's approval (<see cref="Policy.IOwnerApproval"/>; no channel = denied), and is closed gracefully only: one WM_CLOSE,
+    /// no force_kill, no discard_changes, no dialog answered (Revit's own save prompt stays for the user), never killed.
     /// </summary>
     public async Task<CloseResult> CloseAsync(CloseRequest request, CancellationToken cancellationToken)
     {
@@ -306,22 +327,8 @@ public sealed class RevitProcessService : IDisposable
         var owned = _launched.IsOwned(pid);
         if (!owned)
         {
-            if (!request.ForceForeign)
-            {
-                throw GatewayException.Denied(
-                    $"pid {pid} was not launched by the gateway — it may be the user's own Revit with unsaved work. The gateway only closes Revit processes it started (revit_launch). " +
-                    $"Only if the user explicitly asked to close this Revit, call again with force_foreign:true and confirm_pid:{pid}.");
-            }
-
-            if (request.ConfirmPid != pid)
-            {
-                throw GatewayException.Denied($"force_foreign requires confirm_pid to equal pid ({pid}). Ask the user to confirm which Revit to close.");
-            }
-
-            if (!string.Equals(SafeName(process), ProcessName, StringComparison.OrdinalIgnoreCase))
-            {
-                throw GatewayException.Validation($"pid {pid} is not a Revit.exe process; revit_close only closes Revit.");
-            }
+            ValidateForeignClose(request, SafeName(process));
+            await EnsureOwnerApprovesForeignCloseAsync(request, process, cancellationToken).ConfigureAwait(false);
         }
 
         using var actionLock = _readiness.AcquireActionLock(pid);
@@ -343,6 +350,75 @@ public sealed class RevitProcessService : IDisposable
         }
     }
 
+    /// <summary>
+    /// The agent's side of a foreign close (necessary, not sufficient: the owner still decides). Throws PERMISSION_DENIED /
+    /// VALIDATION_FAILED; nothing is sent to the process.
+    /// </summary>
+    public static void ValidateForeignClose(CloseRequest request, string processName)
+    {
+        var pid = request.Pid;
+        if (!request.ForceForeign)
+        {
+            throw GatewayException.Denied(
+                $"pid {pid} was not launched by the gateway — it may be the user's own Revit with unsaved work. The gateway only closes Revit processes it started (revit_launch). " +
+                $"Only if the user explicitly asked to close this Revit, call again with force_foreign:true and confirm_pid:{pid}; the owner must then approve it (dashboard or Telegram).");
+        }
+
+        if (request.ConfirmPid != pid)
+        {
+            throw GatewayException.Denied($"force_foreign requires confirm_pid to equal pid ({pid}). Ask the user to confirm which Revit to close.");
+        }
+
+        if (!string.Equals(processName, ProcessName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw GatewayException.Validation($"pid {pid} is not a Revit.exe process; revit_close only closes Revit.");
+        }
+
+        if (request.ForceKill || request.DiscardChanges)
+        {
+            throw GatewayException.Denied(
+                $"Revit pid {pid} was not launched by the gateway, so {(request.ForceKill ? "force_kill" : "discard_changes")} is never honored (it may hold the user's unsaved work). " +
+                "A foreign close is a graceful WM_CLOSE only: Revit's own save prompt stays for the user.",
+                new { pid, refused = request.ForceKill ? "force_kill" : "discard_changes" });
+        }
+    }
+
+    /// <summary>The owner's question for closing the foreign Revit of <paramref name="request"/> (pid, open document if known, unsaved work).</summary>
+    public static Policy.OwnerApprovalRequest ForeignCloseApproval(CloseRequest request, int? year, string? mainWindowTitle)
+    {
+        var (doc, _) = GuessDocument(mainWindowTitle);
+        var detail = $"Revit pid {request.Pid}" +
+                     (doc is null ? string.Empty : $", open document '{doc}'") +
+                     ". Unsaved work in it may be lost. The gateway sends one WM_CLOSE only: a save prompt stays for you to answer, nothing is killed";
+        return new Policy.OwnerApprovalRequest("revit_close", request.SessionId, year is { } y ? new[] { y } : Array.Empty<int>(), Policy.OwnerApprovalRequest.DefaultTimeout)
+        {
+            Detail = detail,
+        };
+    }
+
+    private async Task EnsureOwnerApprovesForeignCloseAsync(CloseRequest request, Process process, CancellationToken cancellationToken)
+    {
+        var pid = request.Pid;
+        var start = Win32Windows.ProcessStartUtc(process);
+        var exe = Win32Windows.ProcessImagePath(pid);
+        var question = ForeignCloseApproval(request, exe is null ? null : RevitInstallations.YearOfExecutable(exe), _readiness.Detect(pid).Main?.Title);
+        var decision = _approval is null
+            ? Policy.OwnerDecision.Deny("none", "system", "no owner approval service")
+            : await _approval.RequestAsync(question, cancellationToken).ConfigureAwait(false);
+        if (!decision.Approved)
+        {
+            throw GatewayException.Denied(
+                $"Closing Revit pid {pid} (not launched by the gateway) needs the owner's approval on the RevitAgent dashboard or Telegram; it was not given ({decision.Reason}). Nothing was sent to Revit.",
+                new { pid, needs = "owner_approval", channel = decision.Channel, reason = decision.Reason });
+        }
+
+        // The owner had minutes to answer: the pid must still be the same process (pid reuse).
+        if (start is null || !LaunchedProcessRegistry.IsSameLiveProcess(pid, start.Value))
+        {
+            throw GatewayException.NotFound($"Revit pid {pid} exited (or its pid was reused) while waiting for the owner; nothing was sent.");
+        }
+    }
+
     private async Task<CloseResult> CloseCoreAsync(CloseRequest request, Process process, int pid, bool owned, CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
@@ -354,7 +430,10 @@ public sealed class RevitProcessService : IDisposable
             return Done(pid, "already_exited", "The process had already exited.", handled, sw, owned);
         }
 
-        if (request.ForceKill)
+        // A Revit the gateway did not launch is never killed and its prompts are never answered (ValidateForeignClose already
+        // refused force_kill / discard_changes; this holds for any other caller too).
+        var discard = request.DiscardChanges && owned;
+        if (request.ForceKill && owned)
         {
             Kill(process);
             return Done(pid, "killed", "Killed immediately (force_kill); unsaved changes were lost.", handled, sw, owned);
@@ -363,7 +442,7 @@ public sealed class RevitProcessService : IDisposable
         // A dialog that is already open would swallow WM_CLOSE: only a save prompt (with discard_changes) is handled.
         // Answering a prompt left by an earlier close request lets that close finish on its own.
         var snap = _readiness.Detect(pid);
-        AnswerSavePromptsOrThrow(snap, request.DiscardChanges, owned, handled, dismissAttempts, closing: false);
+        AnswerSavePromptsOrThrow(snap, discard, owned, handled, dismissAttempts, closing: false);
         if (handled.Count > 0 && process.WaitForExit(5000))
         {
             return Exited(pid, handled, sw, owned);
@@ -386,13 +465,21 @@ public sealed class RevitProcessService : IDisposable
                 posted = true;
             }
 
-            AnswerSavePromptsOrThrow(snap, request.DiscardChanges, owned, handled, dismissAttempts, closing: posted);
+            AnswerSavePromptsOrThrow(snap, discard, owned, handled, dismissAttempts, closing: posted);
             if (process.WaitForExit(400))
             {
                 return Exited(pid, handled, sw, owned);
             }
 
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!owned)
+        {
+            throw GatewayException.NotReady(
+                $"Revit pid {pid} (not launched by the gateway) did not exit within {request.Grace.TotalSeconds:0} s{(posted ? " of WM_CLOSE" : " (no main window to close)")}. " +
+                "The gateway never kills a Revit it did not launch: ask the user to close it.",
+                new { pid, wm_close_sent = posted });
         }
 
         Kill(process);
@@ -405,6 +492,50 @@ public sealed class RevitProcessService : IDisposable
             handled,
             sw,
             owned);
+    }
+
+    /// <summary>
+    /// Environment of a Revit started by revit_launch: <see cref="SandboxSaveGuard.LaunchedVariable"/>=1 and, while sandbox
+    /// enforcement is on, <see cref="SandboxSaveGuard.SandboxRootVariable"/> = the sandbox roots. The Bridge's save guard reads
+    /// them (saves outside the sandbox and sync with central are cancelled). Null removes an inherited value.
+    /// </summary>
+    public IReadOnlyDictionary<string, string?> LaunchEnvironment()
+    {
+        var roots = _policy is { EnforceSandbox: true } && _paths is not null ? SandboxSaveGuard.JoinRoots(_policy.SandboxRoots(_paths)) : null;
+        return new Dictionary<string, string?>
+        {
+            [SandboxSaveGuard.LaunchedVariable] = "1",
+            [SandboxSaveGuard.SandboxRootVariable] = roots,
+        };
+    }
+
+    /// <summary>
+    /// <see cref="Process.Start(ProcessStartInfo)"/> with extra environment variables. UseShellExecute = true (needed so no handle
+    /// is inherited) cannot take <see cref="ProcessStartInfo.Environment"/>: the child inherits this process's block, so the
+    /// variables are set for the synchronous start only and restored right after (serialized).
+    /// </summary>
+    public static Process? StartWithEnvironment(ProcessStartInfo psi, IReadOnlyDictionary<string, string?> environment)
+    {
+        lock (EnvironmentGate)
+        {
+            var saved = environment.Keys.ToDictionary(k => k, Environment.GetEnvironmentVariable);
+            try
+            {
+                foreach (var (name, value) in environment)
+                {
+                    Environment.SetEnvironmentVariable(name, value);
+                }
+
+                return Process.Start(psi);
+            }
+            finally
+            {
+                foreach (var (name, value) in saved)
+                {
+                    Environment.SetEnvironmentVariable(name, value);
+                }
+            }
+        }
     }
 
     /// <summary>Title "Autodesk Revit 2024.2 - [Project1 - Floor Plan: Level 1]" → ("Project1", "Floor Plan: Level 1").</summary>
@@ -528,7 +659,8 @@ public sealed class RevitProcessService : IDisposable
             }
 
             // Only a fully read dialog may use the discard exception: partial text could hide a forbidden word (review 2026-11-20).
-            if (verdict.DiscardExceptionAllowed && discard && details is { Complete: true })
+            // Never in a Revit the gateway did not launch: the user answers its save prompt.
+            if (owned && verdict.DiscardExceptionAllowed && discard && details is { Complete: true })
             {
                 var dontSave = details.Buttons.Where(DialogSafety.IsDontSaveButton).ToList();
                 if (dontSave.Count == 1)
@@ -558,7 +690,10 @@ public sealed class RevitProcessService : IDisposable
                 }
             }
 
-            var message = verdict.IsSavePrompt
+            var message = !owned
+                ? $"Revit (pid {snap.Pid}, not launched by the gateway) shows '{raw.Window.Title}'{(closing ? " after WM_CLOSE" : string.Empty)}. The gateway never answers dialogs of a Revit it did not launch: " +
+                  "the user answers it (a save prompt is theirs to decide). Nothing else was sent."
+                : verdict.IsSavePrompt
                 ? discard && !verdict.DiscardExceptionAllowed
                     ? $"Revit (pid {snap.Pid}) shows '{raw.Window.Title}', a save prompt that also matches a forbidden category ({verdict.ForbiddenTerm}); it was not answered. Ask the user."
                     : $"Revit (pid {snap.Pid}) asks to save changes ('{raw.Window.Title}'); it was not answered and Revit is still open. " +

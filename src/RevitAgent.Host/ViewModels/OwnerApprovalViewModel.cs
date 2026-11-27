@@ -75,8 +75,17 @@ namespace RevitAgent.Host.ViewModels
 
         private string Describe(OwnerApprovalRequest request)
         {
-            var key = request.Tool == "bridge_uninstall" ? "Str_ApprovalUninstallFmt" : "Str_ApprovalInstallFmt";
-            return string.Format(CultureInfo.CurrentCulture, _localization.GetString(key), request.SessionId, request.YearsText);
+            switch (request.Tool)
+            {
+                case "bridge_install":
+                    return string.Format(CultureInfo.CurrentCulture, _localization.GetString("Str_ApprovalInstallFmt"), request.SessionId, request.YearsText);
+                case "bridge_uninstall":
+                    return string.Format(CultureInfo.CurrentCulture, _localization.GetString("Str_ApprovalUninstallFmt"), request.SessionId, request.YearsText);
+                case "revit_close":
+                    return string.Format(CultureInfo.CurrentCulture, _localization.GetString("Str_ApprovalCloseRevitFmt"), request.SessionId, request.Detail);
+                default:
+                    return request.Describe() + "."; // never shown as another request (an unknown tool must not read as "install")
+            }
         }
 
         private static void OnUi(Action action)

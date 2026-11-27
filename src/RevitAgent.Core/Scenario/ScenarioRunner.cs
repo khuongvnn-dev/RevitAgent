@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using RevitAgent.Contracts.Protocol;
 using RevitAgent.Core.Policy;
+using RevitAgent.Core.Revit;
 using RevitAgent.Core.RunStore;
 using RevitAgent.Core.Tools;
 
@@ -402,6 +403,7 @@ public sealed class ScenarioRunner
                 ?? throw new ScenarioAbortException("ENV", "revit_launch returned no pid.");
             ctx.Pid = pid;
             ctx.Launched = true;
+            ctx.LaunchedStartUtc = new LaunchedProcessRegistry(_paths).Get(pid)?.StartTimeUtc; // the fallback kill needs this exact process
             ctx.Vars.Set("pid", pid.ToString(CultureInfo.InvariantCulture));
             ctx.Log($"Revit {ctx.Scenario.RevitVersion} launched by this run: pid {pid}");
 
@@ -658,6 +660,41 @@ public sealed class ScenarioRunner
             await Task.Delay(chunk, ct).ConfigureAwait(false);
             remaining -= chunk;
             await CheckRevitLivenessAsync(ctx).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Whether the cleanup may kill <paramref name="pid"/> after revit_close failed: never after a refusal (PERMISSION_DENIED:
+    /// the policy said no), and only a process the launched-process registry still owns with the start time recorded at launch
+    /// (never the user's Revit, never a process that reused the pid).
+    /// </summary>
+    public static bool MayKillAfterFailedClose(string? closeErrorCode, LaunchedProcess? ownedNow, DateTime? launchedStartUtc) =>
+        closeErrorCode != GatewayErrorCodes.PermissionDenied &&
+        ownedNow is not null && launchedStartUtc is { } start &&
+        (ownedNow.StartTimeUtc - start).Duration() <= TimeSpan.FromSeconds(1);
+
+    private bool KillOwnedAfterFailedClose(ToolResult closeResult, int pid, DateTime? launchedStartUtc)
+    {
+        var owned = new LaunchedProcessRegistry(_paths).Get(pid); // live + same start time, or null
+        if (!MayKillAfterFailedClose(closeResult.ErrorCode, owned, launchedStartUtc))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById(pid);
+            if (!LaunchedProcessRegistry.IsSameLiveProcess(pid, owned!.StartTimeUtc))
+            {
+                return false; // re-checked right before the kill
+            }
+
+            p.Kill();
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
         }
     }
 
@@ -1304,15 +1341,10 @@ public sealed class ScenarioRunner
                         if (r is { IsError: true })
                         {
                             c["revit_close_error"] = ResultFields.Message(r);
-                            try
+                            if (KillOwnedAfterFailedClose(r, pid, ctx.LaunchedStartUtc))
                             {
-                                var p = System.Diagnostics.Process.GetProcessById(pid);
-                                p.Kill();
                                 c["revit_killed"] = true;
                                 c["revit_closed"] = true;
-                            }
-                            catch
-                            {
                             }
                         }
                     }
@@ -1850,6 +1882,9 @@ public sealed class ScenarioRunner
         public int? Pid { get; set; }
 
         public bool Launched { get; set; }
+
+        /// <summary>Start time of the Revit this run launched, from the launched-process registry (null = not recorded there).</summary>
+        public DateTime? LaunchedStartUtc { get; set; }
 
         public bool DocOpened { get; set; }
 

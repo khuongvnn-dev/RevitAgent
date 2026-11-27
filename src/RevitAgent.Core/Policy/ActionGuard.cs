@@ -39,7 +39,8 @@ public sealed class SystemWindowProcessResolver : IWindowProcessResolver
 /// <summary>
 /// Central action guard (called from <see cref="ToolRegistry"/>): a tool with permission &gt;= Interact that targets a
 /// Revit process the gateway did NOT launch needs an active <see cref="ActionGrant"/> set by the owner on the dashboard.
-/// Read tools, tools without a process target, other applications and gateway-launched Revits are unaffected.
+/// Read tools, tools without a process target and gateway-launched Revits are unaffected here; ui_* input to other
+/// applications is limited by <see cref="InputTargetGuard"/>, which also repeats this rule on the resolved target.
 /// </summary>
 public sealed class ActionGuard
 {
@@ -58,10 +59,15 @@ public sealed class ActionGuard
         _windows = windows;
     }
 
-    /// <summary>Returns true when a grant allowed the call; throws PERMISSION_DENIED when it is not allowed.</summary>
+    /// <summary>
+    /// Pre-check on the call's own pid / window / hwnd arguments. Returns true when a grant allowed the call; throws
+    /// PERMISSION_DENIED when it is not allowed. Tools that resolve their target later (refs, selectors, the session's
+    /// current window) repeat the grant rule on the resolved process through <see cref="InputTargetGuard"/>.
+    /// </summary>
     public bool Check(IGatewayTool tool, ToolCall call)
     {
-        // revit_close keeps its own owner-only rule (foreign close needs force_foreign + confirm_pid).
+        // revit_close keeps its own rule: a foreign close needs force_foreign + confirm_pid AND the owner's approval
+        // (RevitProcessService.CloseAsync), and is graceful only. A grant never stands in for that approval.
         if (tool.Permission < ToolPermission.Interact || tool.Name == "revit_close")
         {
             return false;
@@ -70,26 +76,36 @@ public sealed class ActionGuard
         var grantUsed = false;
         foreach (var pid in TargetPids(call))
         {
-            var info = _probe.Get(pid);
-            if (info is null || !info.IsRevit || _owned.IsOwned(pid))
-            {
-                continue;
-            }
-
-            if (_grants.FindActive(pid) is null)
-            {
-                throw GatewayException.Denied(
-                    $"Tool '{tool.Name}' would act on Revit pid {pid}, which the user started (not launched by the gateway). " +
-                    $"Ask the user to enable \"{DashboardSwitch}\" for it on the RevitAgent dashboard (time-limited), then retry. " +
-                    "Read-only tools (revit_list_instances, ui_snapshot, model_query_elements, ...) still work without it. " +
-                    "Or launch your own Revit with revit_launch (only if the user asked).",
-                    new { pid, needs = "action_grant" });
-            }
-
-            grantUsed = true;
+            grantUsed |= EnsureGrant(tool.Name, pid);
         }
 
         return grantUsed;
+    }
+
+    /// <summary>
+    /// The grant rule for one target process: a Revit the gateway did not launch needs an active <see cref="ActionGrant"/>.
+    /// Returns true when a grant allowed it; throws PERMISSION_DENIED when none does. Other processes and gateway-launched
+    /// Revits pass (other processes are limited by <see cref="InputTargetGuard"/>).
+    /// </summary>
+    public bool EnsureGrant(string toolName, int pid)
+    {
+        var info = _probe.Get(pid);
+        if (info is null || !info.IsRevit || _owned.IsOwned(pid))
+        {
+            return false;
+        }
+
+        if (_grants.FindActive(pid) is null)
+        {
+            throw GatewayException.Denied(
+                $"Tool '{toolName}' would act on Revit pid {pid}, which the user started (not launched by the gateway). " +
+                $"Ask the user to enable \"{DashboardSwitch}\" for it on the RevitAgent dashboard (time-limited), then retry. " +
+                "Read-only tools (revit_list_instances, ui_snapshot, model_query_elements, ...) still work without it. " +
+                "Or launch your own Revit with revit_launch (only if the user asked).",
+                new { pid, needs = "action_grant" });
+        }
+
+        return true;
     }
 
     private HashSet<int> TargetPids(ToolCall call)
@@ -115,11 +131,17 @@ public sealed class PolicyModule : IGatewayModule
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        services.TryAddSingleton<ActionGrantStore>();
+        // A pid grant holds only while the process with that pid keeps its start time (pid reuse).
+        services.TryAddSingleton(sp =>
+        {
+            var probe = sp.GetRequiredService<IRevitProcessProbe>();
+            return new ActionGrantStore(TimeProvider.System, pid => probe.Get(pid)?.StartTime);
+        });
         services.TryAddSingleton<IActionGrantProvider>(sp => sp.GetRequiredService<ActionGrantStore>());
         services.TryAddSingleton<IOwnedProcessLookup>(sp => new LaunchedLookup(sp.GetRequiredService<LaunchedProcessRegistry>()));
         services.TryAddSingleton<IWindowProcessResolver, SystemWindowProcessResolver>();
         services.TryAddSingleton<ActionGuard>();
+        services.TryAddSingleton<InputTargetGuard>();
     }
 
     private sealed class LaunchedLookup : IOwnedProcessLookup

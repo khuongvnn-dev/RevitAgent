@@ -30,6 +30,57 @@ public static class UiPaths
         return full;
     }
 
+    /// <summary>
+    /// An explicit <c>save_path</c> for an image the call will create: inside the evidence folders (<see cref="Evidence"/>),
+    /// with no extension (".png" is added) or ".png" (any other extension: VALIDATION_FAILED), and NEW: an existing file or
+    /// folder is CONFLICT, so run data and evidence are never overwritten.
+    /// </summary>
+    public static string NewImageFile(AgentPaths paths, string requested, string baseDir)
+    {
+        var full = Evidence(paths, requested, baseDir);
+        var ext = Path.GetExtension(full);
+        if (ext.Length == 0)
+        {
+            full += ImageExtension;
+        }
+        else if (!string.Equals(ext, ImageExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            throw GatewayException.Validation($"save_path '{requested}' must be a .png file (images are written as PNG).");
+        }
+
+        EnsureNew(full);
+        return full;
+    }
+
+    /// <summary>CONFLICT when <paramref name="full"/> already exists (file or folder).</summary>
+    public static void EnsureNew(string full)
+    {
+        if (File.Exists(full) || Directory.Exists(full))
+        {
+            throw new GatewayException(
+                Contracts.Protocol.GatewayErrorCodes.Conflict,
+                $"'{full}' already exists. An explicit save_path must name a new file: existing evidence and run data are never overwritten.");
+        }
+    }
+
+    /// <summary>Writes <paramref name="bytes"/> to a file that must not exist yet (CONFLICT otherwise; never overwrites).</summary>
+    public static void WriteNew(string full, byte[] bytes)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        try
+        {
+            using var stream = new FileStream(full, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            stream.Write(bytes, 0, bytes.Length);
+        }
+        catch (IOException) when (File.Exists(full))
+        {
+            EnsureNew(full);
+            throw;
+        }
+    }
+
+    public const string ImageExtension = ".png";
+
     public static bool IsUnder(string full, string dir)
     {
         var root = Path.GetFullPath(dir).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;

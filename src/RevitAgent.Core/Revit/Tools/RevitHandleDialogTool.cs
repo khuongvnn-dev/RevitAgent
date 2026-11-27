@@ -7,11 +7,13 @@ public sealed class RevitHandleDialogTool : GatewayTool
 {
     private readonly RevitReadiness _readiness;
     private readonly LaunchedProcessRegistry _launched;
+    private readonly Policy.InputTargetGuard _inputGuard;
 
-    public RevitHandleDialogTool(RevitReadiness readiness, LaunchedProcessRegistry launched)
+    public RevitHandleDialogTool(RevitReadiness readiness, LaunchedProcessRegistry launched, Policy.InputTargetGuard inputGuard)
     {
         _readiness = readiness;
         _launched = launched;
+        _inputGuard = inputGuard;
     }
 
     public override string Name => "revit_handle_dialog";
@@ -45,6 +47,11 @@ public sealed class RevitHandleDialogTool : GatewayTool
         var button = call.RequireString("button");
         var verify = RevitToolHelpers.Seconds(call, "verify_timeout_sec", 5, 1, 30);
         RevitToolHelpers.EnsureRevitTarget(pid, _launched);
+        if (Win32Windows.IsProcessAlive(pid))
+        {
+            _inputGuard.EnsureAllowed(pid, Name); // the dialog's own process (HandleDialog checks the hwnd belongs to pid)
+        }
+
         using var actionLock = _readiness.AcquireActionLock(pid);
         var result = _readiness.HandleDialog(pid, hwnd, button, call.GetBool("discard_changes"), verify);
         return Task.FromResult(ToolResult.Json(result));

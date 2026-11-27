@@ -225,14 +225,17 @@ Launch arguments that name an existing file or folder, or a model / template / f
 `revit_close {pid}`:
 
 1. Not launched by the gateway → `PERMISSION_DENIED`, unless the user explicitly asked: `force_foreign: true` **and**
-   `confirm_pid` = pid (and it must be a `Revit.exe`).
+   `confirm_pid` = pid (and it must be a `Revit.exe`). That request is necessary, not sufficient: the owner must then
+   approve on the dashboard or Telegram (no channel or no answer = denied), and the close is graceful only: one `WM_CLOSE`,
+   `force_kill` and `discard_changes` are refused, no dialog is answered (a save prompt stays for the user), and it is
+   never killed after `grace_sec` (`TARGET_NOT_READY` instead).
 2. A dialog already open → a save prompt with `discard_changes: true` (gateway-launched Revit only) is answered, a harmless
    dialog of a gateway-launched Revit gets `Close` / `Later` / `Not now` (section 4c); anything else → `MODAL_BLOCKED`.
 3. `WM_CLOSE` to the main window as soon as there is one; during `grace_sec` (default 60): save prompt → don't-save only
    with `discard_changes`, otherwise `MODAL_BLOCKED` and Revit stays open; a harmless dialog → its `Close` / `Later` / `Not now`
    (section 4c, never `Cancel`); any other dialog → `MODAL_BLOCKED`.
 4. Still running after `grace_sec` (no prompt appeared, or no main window ever appeared) → killed
-   (`method: killed_after_grace`). `force_kill: true` kills at once. Nothing is ever saved.
+   (`method: killed_after_grace`; gateway-launched Revit only). `force_kill: true` kills at once. Nothing is ever saved.
 
 ## 8. Sandbox
 

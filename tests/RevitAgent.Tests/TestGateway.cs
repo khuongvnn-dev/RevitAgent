@@ -4,6 +4,7 @@ using RevitAgent.Core;
 using RevitAgent.Core.Audit;
 using RevitAgent.Core.Composition;
 using RevitAgent.Core.Mcp;
+using RevitAgent.Core.Policy;
 using RevitAgent.Host.Config;
 using RevitAgent.Host.Services;
 
@@ -23,10 +24,18 @@ internal static class TestGateway
         return dir;
     }
 
+    /// <summary>
+    /// Helper processes the desktop tests drive (the WPF test app and the powershell.exe dialog hosts). UI input reaches only
+    /// Revit by default, so the test gateway allows these the way an owner would in the dashboard settings.
+    /// </summary>
+    public static readonly string[] TestInputProcesses = { "RevitAgent.UiTestApp", "powershell" };
+
     public static ServiceProvider BuildProvider(out AgentPaths paths)
     {
         paths = new AgentPaths(NewTempDir("revitagent_home_"));
-        return GatewayServices.BuildGateway(paths);
+        var sp = GatewayServices.BuildGateway(paths);
+        sp.GetRequiredService<GatewayPolicy>().SetAllowedInputProcesses(TestInputProcesses);
+        return sp;
     }
 
     public static HostIpcService CreateIpcService(IAuditLogService logService)

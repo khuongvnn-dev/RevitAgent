@@ -11,12 +11,18 @@ namespace RevitAgent.Core.Ui;
 /// <summary>Context of one synchronous UI operation running on a worker thread.</summary>
 public sealed class UiOp
 {
-    internal UiOp(UiAutomationService service, string session, CancellationToken token)
+    private int? _restrictPid;
+
+    internal UiOp(UiAutomationService service, string session, CancellationToken token, bool input = false)
     {
         Service = service;
         Session = session;
         Token = token;
+        Input = input;
     }
+
+    /// <summary>The operation sends input (a ui_* action or a UI script), not only observes.</summary>
+    public bool Input { get; }
 
     public UiAutomationService Service { get; }
 
@@ -32,8 +38,23 @@ public sealed class UiOp
     /// <summary>Called before each auto-wait attempt (the script runner handles dialog rules here).</summary>
     public Action<UiOp>? BeforeAttempt { get; set; }
 
-    /// <summary>When set, every resolved window must belong to this process (ui_run_script safety boundary).</summary>
-    public int? RestrictPid { get; set; }
+    /// <summary>
+    /// When set, every resolved window must belong to this process (ui_run_script safety boundary). On an input operation the
+    /// process must pass <see cref="UiAutomationService.EnsureInputTarget"/> first, before any step or dialog rule runs.
+    /// </summary>
+    public int? RestrictPid
+    {
+        get => _restrictPid;
+        set
+        {
+            if (Input && value is { } pid)
+            {
+                Service.EnsureInputTarget(pid, "ui_run_script");
+            }
+
+            _restrictPid = value;
+        }
+    }
 
     public void Sleep(int ms)
     {
@@ -72,11 +93,13 @@ public sealed class UiAutomationService : IDisposable
 
     private readonly SemaphoreSlim _inputLock = new(1, 1);
     private readonly AuditLog _audit;
+    private readonly Policy.InputTargetGuard _inputGuard;
 
-    public UiAutomationService(AgentPaths paths, AuditLog audit, Sandbox.EvidenceService? evidence = null)
+    public UiAutomationService(AgentPaths paths, AuditLog audit, Policy.InputTargetGuard inputGuard, Sandbox.EvidenceService? evidence = null)
     {
         Paths = paths;
         _audit = audit;
+        _inputGuard = inputGuard;
         Evidence = evidence ?? new Sandbox.EvidenceService();
     }
 
@@ -109,7 +132,7 @@ public sealed class UiAutomationService : IDisposable
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         try
         {
-            var op = new UiOp(this, session, cts.Token);
+            var op = new UiOp(this, session, cts.Token, input);
             configure?.Invoke(op);
             task = Task.Factory.StartNew(
                 () => NativeMethods.WithPhysicalDpi(() => Translate(() => work(op))),
@@ -205,6 +228,13 @@ public sealed class UiAutomationService : IDisposable
     }
 
     public bool IsMainWindow(TopLevelWindow w) => TopLevelWindows.PickMain(TopLevelWindows.List(w.ProcessId))?.Hwnd == w.Hwnd;
+
+    /// <summary>
+    /// The central input check on the process that will really receive input (after refs / selectors / the current window
+    /// were resolved): never the gateway, Revit or an owner-allowed application only, and a grant for a Revit the gateway did
+    /// not launch (<see cref="Policy.InputTargetGuard"/>). Throws PERMISSION_DENIED.
+    /// </summary>
+    public void EnsureInputTarget(int pid, string what) => _inputGuard.EnsureAllowed(pid, what);
 
     // ---------------------------------------------------------------- targets
 

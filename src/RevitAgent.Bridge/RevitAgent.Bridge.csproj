@@ -83,6 +83,7 @@
     <Compile Include="..\RevitAgent.Contracts\Bridge\BridgePipeNames.cs" Link="Shared\BridgePipeNames.cs" />
     <Compile Include="..\RevitAgent.Contracts\Bridge\CommandSafety.cs" Link="Shared\CommandSafety.cs" />
     <Compile Include="..\RevitAgent.Contracts\Bridge\ScheduleHeader.cs" Link="Shared\ScheduleHeader.cs" />
+    <Compile Include="..\RevitAgent.Contracts\Bridge\SandboxSaveGuard.cs" Link="Shared\SandboxSaveGuard.cs" />
     <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\WireJson.cs" Link="Shared\WireJson.cs" />
     <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\WireFraming.cs" Link="Shared\WireFraming.cs" />
     <Compile Include="..\RevitAgent.Contracts\Bridge\Wire\BridgeServerCore.cs" Link="Shared\BridgeServerCore.cs" />

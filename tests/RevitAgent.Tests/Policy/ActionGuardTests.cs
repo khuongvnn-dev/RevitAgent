@@ -49,8 +49,8 @@ public sealed class ActionGuardTests
         {
             _sp = TestGateway.BuildProvider(out _);
             Time = new FakeTime();
-            Grants = new ActionGrantStore(Time);
-            var probe = new FakeRevitProbe().Add(Owned).Add(Foreign).Add(Foreign2).Add(Other, "notepad");
+            var probe = Probe = new FakeRevitProbe().Add(Owned).Add(Foreign).Add(Foreign2).Add(Other, "notepad");
+            Grants = new ActionGrantStore(Time, pid => probe.Get(pid)?.StartTime);
             Audit = _sp.GetRequiredService<AuditLog>();
             Registry = new ToolRegistry(
                 new IGatewayTool[]
@@ -67,6 +67,8 @@ public sealed class ActionGuardTests
         }
 
         public FakeTime Time { get; }
+
+        public FakeRevitProbe Probe { get; }
 
         public ActionGrantStore Grants { get; }
 
@@ -114,6 +116,31 @@ public sealed class ActionGuardTests
         Assert.False((await rig.Call("fake_act", new { pid = Foreign })).IsError);
         Assert.True(rig.Audit.Recent().Last().GrantUsed);
         Assert.Equal(GatewayErrorCodes.PermissionDenied, (await rig.Call("fake_act", new { pid = Foreign2 })).ErrorCode);
+    }
+
+    [Fact]
+    public async Task PidGrant_EndsWhenThePidIsReusedByAnotherProcess()
+    {
+        await using var rig = new Rig();
+        var grant = rig.Grants.Grant(GrantScope.Pid, Foreign, null);
+        Assert.Equal(FakeRevitProbe.DefaultStart, grant.ProcessStart);
+        Assert.False((await rig.Call("fake_act", new { pid = Foreign })).IsError);
+
+        // The granted Revit exits and a new Revit gets the same pid: the owner never allowed that one.
+        rig.Probe.Reuse(Foreign);
+        Assert.Null(rig.Grants.FindActive(Foreign));
+        Assert.Equal(GatewayErrorCodes.PermissionDenied, (await rig.Call("fake_act", new { pid = Foreign })).ErrorCode);
+        Assert.Empty(rig.Grants.Active());
+    }
+
+    [Fact]
+    public void PidGrant_ForAProcessWhoseStartTimeIsUnknown_IsNeverActive()
+    {
+        var store = new ActionGrantStore(TimeProvider.System, _ => null);
+        store.Grant(GrantScope.Pid, Foreign, null);
+        Assert.Null(store.FindActive(Foreign));
+        store.Grant(GrantScope.All, null, null);
+        Assert.Equal(GrantScope.All, store.FindActive(Foreign)!.Scope); // an "all my Revit" grant has no pid to check
     }
 
     [Fact]

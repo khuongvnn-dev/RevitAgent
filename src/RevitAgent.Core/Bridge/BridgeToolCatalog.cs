@@ -318,6 +318,15 @@ public static class BridgeToolCatalog
         }
 
         services.Policy.EnsureInSandbox(full, services.Paths, "Model");
+
+        // A sandbox copy of a workshared model must not stay tied to the real central file (sync would write to it).
+        if (services.Policy.EnforceSandbox && !call.GetBool("detach_from_central", true))
+        {
+            throw new GatewayException(
+                Contracts.Protocol.GatewayErrorCodes.SandboxViolation,
+                "detach_from_central:false is refused while sandbox enforcement is on: a sandbox copy stays detached from its central model, so nothing can be synchronized to the real central file. Omit it (default true).");
+        }
+
         args["path"] = full;
         return args;
     }

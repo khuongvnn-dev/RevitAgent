@@ -272,6 +272,12 @@
 
     <sys:String x:Key="Str_NoteEnforceSandbox">Write tools only work on model copies inside the runs folder.</sys:String>
 
+    <sys:String x:Key="Str_LblAllowedInputProcesses">Other applications AI may click and type in (besides Revit):</sys:String>
+
+    <sys:String x:Key="Str_Tooltip_AllowedInputProcesses">Process names without .exe, separated by commas (for example notepad). Empty = Revit only. RevitAgent itself can never be listed.</sys:String>
+
+    <sys:String x:Key="Str_NoteAllowedInputProcesses">Empty is recommended: AI input then reaches only Revit. Reading any window still works.</sys:String>
+
 
 
 
@@ -319,7 +325,8 @@
     <sys:String x:Key="Str_CardOwnerApproval">Approval requests</sys:String>
     <sys:String x:Key="Str_ApprovalInstallFmt">{0} asks to install the RevitAgent Bridge for Revit {1}.</sys:String>
     <sys:String x:Key="Str_ApprovalUninstallFmt">{0} asks to UNINSTALL the RevitAgent Bridge for Revit {1}.</sys:String>
-    <sys:String x:Key="Str_NoteOwnerApproval">Changes the shared Revit add-ins folder of this PC. No answer within 5 minutes = denied.</sys:String>
+    <sys:String x:Key="Str_ApprovalCloseRevitFmt">{0} asks to CLOSE a Revit you started: {1}.</sys:String>
+    <sys:String x:Key="Str_NoteOwnerApproval">Only the owner can allow this. No answer within 5 minutes = denied.</sys:String>
     <sys:String x:Key="Str_BtnApprove">Approve</sys:String>
     <sys:String x:Key="Str_BtnDeny">Deny</sys:String>
     <sys:String x:Key="Str_BtnRevokeGrant">Revoke</sys:String>

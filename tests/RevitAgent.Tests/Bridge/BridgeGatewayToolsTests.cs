@@ -266,6 +266,19 @@ public class BridgeGatewayToolsTests
     }
 
     [Fact]
+    public async Task DocOpen_KeepingTheCentralLink_IsRefusedWhileSandboxEnforcementIsOn()
+    {
+        await using var sp = BuildGateway(out var paths); // no Bridge: refused before any pipe is touched
+        var registry = sp.GetRequiredService<ToolRegistry>();
+        var copy = Path.Combine(paths.RunsDir, "r1", "central_copy.rvt");
+
+        var r = await registry.InvokeAsync("doc_open", JsonSerializer.SerializeToElement(new { pid = Pid, path = copy, detach_from_central = false }), "t", CancellationToken.None);
+
+        Assert.Equal(GatewayErrorCodes.SandboxViolation, r.ErrorCode);
+        Assert.Contains("detach_from_central:false", ((TextContent)r.Content[0]).Text);
+    }
+
+    [Fact]
     public async Task SandboxEnforcementOff_AllowsOutsidePaths()
     {
         var pipe = BridgeClientProtocolTests.NewPipeName();
