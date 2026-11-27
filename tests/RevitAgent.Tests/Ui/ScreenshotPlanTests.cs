@@ -57,3 +57,41 @@ public sealed class ScreenshotPlanTests
         Assert.Contains("view_export_image", d.FailureMessage);
     }
 }
+
+public sealed class ScreenGeometryTests
+{
+    [Fact]
+    public void Intersect_ClipsMaximizedFrameToWorkArea()
+    {
+        var frame = new System.Drawing.Rectangle(-8, -8, 1936, 1096);
+        var work = new System.Drawing.Rectangle(0, 0, 1920, 1040);
+        Assert.Equal(work, ScreenGeometry.Intersect(frame, work));
+    }
+
+    [Fact]
+    public void Intersect_Disjoint_IsEmpty() =>
+        Assert.True(ScreenGeometry.Intersect(new(0, 0, 10, 10), new(20, 20, 5, 5)).IsEmpty);
+
+    [Fact]
+    public void GridPoints_StayInsideRect_AndCountIsStepsSquared()
+    {
+        var r = new System.Drawing.Rectangle(100, 50, 400, 300);
+        var pts = ScreenGeometry.GridPoints(r, 12);
+        Assert.Equal(144, pts.Count);
+        Assert.All(pts, p => Assert.True(r.Contains(p)));
+    }
+
+    [Fact]
+    public void GridPoints_TinyOrEmpty_DoesNotThrow()
+    {
+        Assert.Empty(ScreenGeometry.GridPoints(System.Drawing.Rectangle.Empty, 12));
+        Assert.All(ScreenGeometry.GridPoints(new(0, 0, 3, 3), 4), p => Assert.True(p.X >= 0 && p.Y >= 0));
+    }
+
+    [Fact]
+    public void Contains_DetectsFullyInside()
+    {
+        Assert.True(ScreenGeometry.Contains(new(0, 0, 100, 100), new(10, 10, 20, 20)));
+        Assert.False(ScreenGeometry.Contains(new(0, 0, 100, 100), new(90, 90, 20, 20)));
+    }
+}

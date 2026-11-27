@@ -88,15 +88,16 @@ public static class WindowCapture
             return null;
         }
 
+        if (fromScreen)
+        {
+            // Only the visible frame, clipped to the monitor work area: no invisible resize border, nothing off-monitor.
+            return ScreenGuard.TryGetVisibleRect(hwnd, out var vis) ? FromScreen(vis.X, vis.Y, vis.Width, vis.Height) : null;
+        }
+
         int w = r.Width, h = r.Height;
         if (w <= 0 || h <= 0)
         {
             return null;
-        }
-
-        if (fromScreen)
-        {
-            return FromScreen(r.Left, r.Top, w, h);
         }
 
         // DPI-unaware windows: PrintWindow renders them at their logical (96-DPI) size; capture that, then scale up.

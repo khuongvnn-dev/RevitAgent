@@ -8,6 +8,10 @@ internal static class NativeMethods
 {
     public const uint GwOwner = 4;
     public const uint GaRoot = 2;
+    public const uint GwHwndPrev = 3;
+    public const uint MonitorDefaultToNearest = 2;
+    public const int DwmwaCloaked = 14;
+    public const int DwmwaExtendedFrameBounds = 9;
     public const int SwRestore = 9;
 
     public const uint InputMouse = 0;
@@ -49,6 +53,15 @@ internal static class NativeMethods
         public readonly int Width => Right - Left;
 
         public readonly int Height => Bottom - Top;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MonitorInfo
+    {
+        public int Size;
+        public Rect Monitor;
+        public Rect Work;
+        public uint Flags;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -144,6 +157,69 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeRect(IntPtr hwnd, int attribute, out Rect value, int size);
+
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    private static extern int DwmGetWindowAttributeInt(IntPtr hwnd, int attribute, out int value, int size);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+
+    /// <summary>The visible frame of the window (without the invisible resize border); falls back to <c>GetWindowRect</c>.</summary>
+    public static bool GetVisibleBounds(IntPtr hwnd, out Rect rect)
+    {
+        try
+        {
+            if (DwmGetWindowAttributeRect(hwnd, DwmwaExtendedFrameBounds, out rect, Marshal.SizeOf<Rect>()) == 0 && rect.Width > 0 && rect.Height > 0)
+            {
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+        }
+
+        return GetWindowRect(hwnd, out rect);
+    }
+
+    /// <summary>True when DWM reports the window cloaked (on another virtual desktop, suspended UWP...).</summary>
+    public static bool IsCloaked(IntPtr hwnd)
+    {
+        try
+        {
+            return DwmGetWindowAttributeInt(hwnd, DwmwaCloaked, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Work area (monitor minus taskbar) of the monitor nearest to the window, in physical pixels.</summary>
+    public static bool GetWorkArea(IntPtr hwnd, out Rect work)
+    {
+        work = default;
+        var mon = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (mon == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(mon, ref info))
+        {
+            return false;
+        }
+
+        work = info.Work;
+        return true;
+    }
 
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
