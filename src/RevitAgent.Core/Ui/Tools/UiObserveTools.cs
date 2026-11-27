@@ -357,6 +357,11 @@ public sealed class UiScreenshotTool : UiToolBase
 
     public override ToolPermission Permission => ToolPermission.Read;
 
+    // Bridge export (up to 75 s) plus the screen-copy / TARGET_NOT_READY fallbacks must fit in the budget.
+    public override TimeSpan Timeout => TimeSpan.FromSeconds(150);
+
+    private static readonly TimeSpan FallbackMargin = TimeSpan.FromSeconds(30);
+
     protected override Schema BuildSchema() => ElementArgs(Targeting(Schema.Object()), "an element to crop to")
         .String("save_path", "PNG path in captures or runs.")
         .Integer("max_width", "Max image width.", defaultValue: 1600, minimum: 100, maximum: 4000)
@@ -366,6 +371,7 @@ public sealed class UiScreenshotTool : UiToolBase
 
     public override async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
     {
+        var started = System.Diagnostics.Stopwatch.StartNew();
         var spec = Spec(call);
         var reference = Ref(call);
         var selector = SelectorArg(call);
@@ -377,10 +383,17 @@ public sealed class UiScreenshotTool : UiToolBase
         if (outcome.Info is null)
         {
             string? bridgeError = null;
+            var bridgeBudget = TimeSpan.FromSeconds(75);
+            var remaining = Timeout - started.Elapsed - FallbackMargin;
+            if (remaining < bridgeBudget)
+            {
+                bridgeBudget = remaining > TimeSpan.FromSeconds(5) ? remaining : TimeSpan.FromSeconds(5);
+            }
+
             try
             {
                 var args = new JsonObject { ["save_path"] = path, ["pixel_width"] = maxWidth };
-                var res = await _bridge!.CallAsync(outcome.PendingPid, BridgeToolNames.ViewExportImage, JsonSerializer.SerializeToElement(args), TimeSpan.FromSeconds(75), cancellationToken).ConfigureAwait(false);
+                var res = await _bridge!.CallAsync(outcome.PendingPid, BridgeToolNames.ViewExportImage, JsonSerializer.SerializeToElement(args), bridgeBudget, cancellationToken).ConfigureAwait(false);
                 outcome = FromBridge(res, path, includeImage, outcome.PendingPid, outcome.PendingTitle ?? string.Empty);
             }
             catch (GatewayException ex)
