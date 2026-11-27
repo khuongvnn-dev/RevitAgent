@@ -32,9 +32,17 @@ namespace RevitAgent.Contracts.Bridge
             }
 
             var c = command.Trim();
-            if (c.Length == 0 || c.StartsWith("CustomCtrl_", StringComparison.OrdinalIgnoreCase))
+            if (c.Length == 0 || IsAddInCommand(c))
             {
                 return null;
+            }
+
+            // Enum.TryParse (older Bridges) reads "Wall,Save" as Wall|Save and "+12" as the value 12: either can resolve
+            // to a blocked PostableCommand whose name never appears in the text. One plain name or id only.
+            if (IsMalformed(c))
+            {
+                return "command_post refuses '" + command + "': pass exactly one PostableCommand name or command id " +
+                       "(no commas, spaces, signs or numeric values), e.g. Wall or ID_OBJECTS_WALL.";
             }
 
             foreach (var name in BlockedPostableNames)
@@ -54,18 +62,70 @@ namespace RevitAgent.Contracts.Bridge
             }
 
             var upper = c.ToUpperInvariant();
-            if (upper.StartsWith("ID_", StringComparison.Ordinal) || upper.StartsWith("HID_", StringComparison.Ordinal))
+            if ((upper.StartsWith("ID_", StringComparison.Ordinal) || upper.StartsWith("HID_", StringComparison.Ordinal)) && HasBlockedFragment(upper))
             {
-                foreach (var fragment in BlockedIdFragments)
-                {
-                    if (upper.IndexOf(fragment, StringComparison.Ordinal) >= 0)
-                    {
-                        return Describe(c);
-                    }
-                }
+                return Describe(c);
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The check for the command id Revit actually resolved (<c>RevitCommandId.Name</c>, e.g. <c>ID_FILE_SAVE</c>): the
+        /// id fragments apply whatever the id looks like, so a name that maps to a save / sync / close / exit id is refused
+        /// even when the text the agent passed looked harmless. Add-in ids (<c>CustomCtrl_</c>) stay allowed.
+        /// </summary>
+        public static string? ResolvedIdBlockReason(string? commandId)
+        {
+            if (commandId == null)
+            {
+                return null;
+            }
+
+            var c = commandId.Trim();
+            if (c.Length == 0 || IsAddInCommand(c))
+            {
+                return null;
+            }
+
+            return HasBlockedFragment(c.ToUpperInvariant()) ? Describe(c) : BlockReason(c);
+        }
+
+        private static bool IsAddInCommand(string c) => c.StartsWith("CustomCtrl_", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>A comma list, inner whitespace, a leading sign or a plain number: never one command name or id.</summary>
+        private static bool IsMalformed(string c)
+        {
+            if (c[0] == '+' || c[0] == '-')
+            {
+                return true;
+            }
+
+            var allDigits = true;
+            foreach (var ch in c)
+            {
+                if (ch == ',' || char.IsWhiteSpace(ch))
+                {
+                    return true;
+                }
+
+                allDigits &= char.IsDigit(ch);
+            }
+
+            return allDigits;
+        }
+
+        private static bool HasBlockedFragment(string upper)
+        {
+            foreach (var fragment in BlockedIdFragments)
+            {
+                if (upper.IndexOf(fragment, StringComparison.Ordinal) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string Describe(string command) =>

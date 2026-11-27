@@ -269,7 +269,7 @@ public sealed class UiKeysTool : UiActionToolBase
 
     public override string Description =>
         "Send a key sequence (SendKeys syntax) to a window after bringing it to the foreground: {TAB} {ENTER} {ESC} {F2} {DOWN 3}, ^a = Ctrl+A, +{TAB} = Shift+Tab, %f = Alt+F, ~ = Enter. " +
-        "Optional ref/selector focuses that element first. Keys are only sent while the target process owns the foreground; if focus is stolen the rest is not sent (TARGET_NOT_READY). " +
+        "Optional ref/selector focuses that element first. Keys are only sent while the target window is in the foreground; if focus is stolen the rest is not sent (TARGET_NOT_READY). " +
         "Alt+F4 on the application's main window is refused (use revit_close). Revit keyboard shortcuts work on the main window (e.g. {ESC}{ESC} to cancel a command).";
 
     protected override Schema BuildSchema() => ElementArgs(Targeting(Schema.Object()), "an element to focus first (optional)")
@@ -300,6 +300,7 @@ public sealed class UiKeysTool : UiActionToolBase
             UiSafety.EnsureActionAllowed(op, w);
             UiActions.EnsureAltF4Safe(op, strokes, w);
             InputSender.EnsureForeground(w.Handle, w.ProcessId, "keys", op.Token);
+            UiActions.EnsureForegroundIsTarget(op, w, "keys");
             if (t is not null)
             {
                 UiActions.FocusElement(op, t.Wrap(op.Core));
@@ -307,7 +308,7 @@ public sealed class UiKeysTool : UiActionToolBase
             }
 
             UiActions.EnsureAltF4Safe(op, strokes, w, afterActivation: true);
-            InputSender.SendStrokes(strokes, w.ProcessId, op.Token);
+            InputSender.SendStrokes(strokes, w.ProcessId, op.Token, requireRoot: w.Handle);
             var r = new Dictionary<string, object?>
             {
                 ["action"] = "keys",

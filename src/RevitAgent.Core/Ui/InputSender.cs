@@ -17,8 +17,10 @@ public readonly record struct KeyStroke(ushort[] Modifiers, ushort VirtualKey, c
 
 /// <summary>
 /// Real keyboard/mouse input with a safety interlock: input is sent only while the foreground window (keyboard) or the
-/// window under the click point (mouse) belongs to the target process. If focus is stolen mid-sequence the rest is
-/// not sent and TARGET_NOT_READY is raised, so input never lands in another application.
+/// window under the click point (mouse) belongs to the target process and, when the caller passes a required root window,
+/// is that very top-level window (so input meant for a main window never lands in a modal dialog of the same process).
+/// If focus is stolen mid-sequence the rest is not sent and TARGET_NOT_READY is raised, so input never lands in another
+/// application.
 /// </summary>
 public static class InputSender
 {
@@ -219,13 +221,17 @@ public static class InputSender
     public static bool ContainsAltF4(IEnumerable<KeyStroke> strokes) =>
         strokes.Any(s => s.VirtualKey == 0x73 && s.Unicode is null && s.Modifiers.Contains(VkMenu));
 
-    /// <summary>Sends strokes to the foreground window, checking before each stroke that it still belongs to <paramref name="pid"/>.</summary>
-    public static void SendStrokes(IReadOnlyList<KeyStroke> strokes, int pid, CancellationToken ct, int delayMs = 15)
+    /// <summary>
+    /// Sends strokes to the foreground window, checking before each stroke that it still belongs to <paramref name="pid"/>
+    /// and, when <paramref name="requireRoot"/> is set, that it is that very top-level window (not, e.g., a modal dialog of
+    /// the same process that activation brought to the front).
+    /// </summary>
+    public static void SendStrokes(IReadOnlyList<KeyStroke> strokes, int pid, CancellationToken ct, int delayMs = 15, IntPtr requireRoot = default)
     {
         for (int i = 0; i < strokes.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
-            GuardForeground(pid, i, strokes.Count);
+            GuardForeground(pid, i, strokes.Count, requireRoot);
             var s = strokes[i];
             var inputs = new List<NativeMethods.Input>();
             foreach (var m in s.Modifiers)
@@ -267,7 +273,7 @@ public static class InputSender
     }
 
     /// <summary>Types text as Unicode key events (any keyboard layout, incl. Vietnamese); \n = Enter, \t = Tab.</summary>
-    public static void TypeText(string text, int pid, CancellationToken ct, int delayMs = 5)
+    public static void TypeText(string text, int pid, CancellationToken ct, int delayMs = 5, IntPtr requireRoot = default)
     {
         var strokes = new List<KeyStroke>(text.Length);
         foreach (var c in text)
@@ -285,19 +291,20 @@ public static class InputSender
             });
         }
 
-        SendStrokes(strokes, pid, ct, delayMs);
+        SendStrokes(strokes, pid, ct, delayMs, requireRoot);
     }
 
     // ---------------------------------------------------------------- mouse
 
     /// <summary>
     /// Clicks at a screen point (physical pixels) after verifying that the window under the point belongs to
-    /// <paramref name="pid"/>. <paramref name="button"/>: left | right | middle.
+    /// <paramref name="pid"/> and, when <paramref name="requireRoot"/> is set, lies in that very top-level window.
+    /// <paramref name="button"/>: left | right | middle.
     /// </summary>
-    public static void Click(int x, int y, string button, int count, int pid, CancellationToken ct)
+    public static void Click(int x, int y, string button, int count, int pid, CancellationToken ct, IntPtr requireRoot = default)
     {
         ct.ThrowIfCancellationRequested();
-        GuardPoint(x, y, pid);
+        GuardPoint(x, y, pid, requireRoot);
         NativeMethods.SetCursorPos(x, y);
         Pause(40, ct);
         uint down = NativeMethods.MouseEventFLeftDown, up = NativeMethods.MouseEventFLeftUp;
@@ -315,7 +322,7 @@ public static class InputSender
         for (int k = 0; k < count; k++)
         {
             ct.ThrowIfCancellationRequested();
-            GuardCursor(x, y, pid);
+            GuardCursor(x, y, pid, requireRoot);
             Send(new List<NativeMethods.Input> { Mouse(down, 0), Mouse(up, 0) });
             Thread.Sleep(count > 1 ? 30 : 40);
         }
@@ -391,28 +398,75 @@ public static class InputSender
 
     // ---------------------------------------------------------------- guards
 
-    private static void GuardForeground(int pid, int sent, int total)
+    /// <summary>
+    /// Whether input may go to the window whose top-level root is <paramref name="actualRoot"/>, owned by process
+    /// <paramref name="actualPid"/>: it must belong to <paramref name="pid"/> and, when <paramref name="requireRoot"/> is set,
+    /// be that very top-level window. The process alone is not enough: activating a window brings a modal dialog it owns
+    /// (e.g. Revit's unsigned add-in security prompt) to the front, and that dialog must not get keys or clicks meant for its owner.
+    /// </summary>
+    public static bool IsInputTarget(int pid, IntPtr requireRoot, int actualPid, IntPtr actualRoot) =>
+        actualRoot != IntPtr.Zero && actualPid == pid && (requireRoot == IntPtr.Zero || actualRoot == requireRoot);
+
+    /// <summary>The top-level root of the foreground window (zero when there is none).</summary>
+    public static IntPtr ForegroundRoot() => Root(NativeMethods.GetForegroundWindow());
+
+    /// <summary>"Title" (hwnd, process, pid) of the window that is in front instead of the target.</summary>
+    internal static string DescribeOther(TopLevelWindow? w) =>
+        w is null ? "no window" : $"\"{UiText.Clip(w.Title, 60)}\" ({w.HwndHex}, {w.ProcessName}, pid {w.ProcessId})";
+
+    /// <summary>What the agent does about a window that is in front instead of the target: name it, so its own safety check applies.</summary>
+    internal static string OtherWindowHint(TopLevelWindow? w) =>
+        w is null
+            ? "Take a ui_snapshot to see which window is in front."
+            : $"Target that window explicitly with window=\"hwnd:{w.HwndHex}\" so its own safety check applies (security, license or save prompts need a human), or wait until it closes.";
+
+    private static IntPtr Root(IntPtr hwnd)
     {
-        var fgPid = ForegroundPid();
-        if (fgPid != pid)
+        if (hwnd == IntPtr.Zero)
         {
-            var fg = TopLevelWindows.Describe(NativeMethods.GetForegroundWindow());
-            throw GatewayException.NotReady(
-                $"Focus left the target process after {sent} of {total} key strokes" +
-                (fg is null ? string.Empty : $" (foreground is now \"{UiText.Clip(fg.Title, 60)}\" of {fg.ProcessName})") +
-                "; the remaining keys were NOT sent. Check the field value and retry.");
+            return IntPtr.Zero;
         }
+
+        var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
+        return root == IntPtr.Zero ? hwnd : root;
     }
 
-    /// <summary>The cursor really is at (x, y) (within 2 px) and over a window of <paramref name="pid"/>; else the user or another program moved it.</summary>
-    private static void GuardCursor(int x, int y, int pid)
+    private static void GuardForeground(int pid, int sent, int total, IntPtr requireRoot)
+    {
+        var fg = NativeMethods.GetForegroundWindow();
+        var fgPid = fg == IntPtr.Zero ? 0 : NativeMethods.GetWindowProcessId(fg);
+        var root = Root(fg);
+        if (IsInputTarget(pid, requireRoot, fgPid, root))
+        {
+            return;
+        }
+
+        var front = TopLevelWindows.Describe(root);
+        if (fgPid != pid)
+        {
+            throw GatewayException.NotReady(
+                $"Focus left the target process after {sent} of {total} key strokes" +
+                (front is null ? string.Empty : $" (foreground is now \"{UiText.Clip(front.Title, 60)}\" of {front.ProcessName})") +
+                "; the remaining keys were NOT sent. Check the field value and retry.");
+        }
+
+        throw GatewayException.NotReady(
+            (sent == 0 ? "No key was sent" : $"Sent {sent} of {total} key strokes, then stopped") +
+            $": the foreground window is {DescribeOther(front)}, not the target window; the remaining keys were NOT sent. " + OtherWindowHint(front));
+    }
+
+    /// <summary>
+    /// The cursor really is at (x, y) (within 2 px) and over a window of <paramref name="pid"/> (and of <paramref name="requireRoot"/>
+    /// when set); else the user or another program moved it, or another window covers the point.
+    /// </summary>
+    private static void GuardCursor(int x, int y, int pid, IntPtr requireRoot = default)
     {
         if (!NativeMethods.GetCursorPos(out var c) || Math.Abs(c.X - x) > 2 || Math.Abs(c.Y - y) > 2)
         {
             throw GatewayException.NotReady($"The mouse cursor is not where it was placed ({x},{y}; actual {c.X},{c.Y}): someone is using the mouse or the point is not reachable. No click was sent.");
         }
 
-        GuardPoint(c.X, c.Y, pid);
+        GuardPoint(c.X, c.Y, pid, requireRoot);
     }
 
     private static bool CursorOverPid(int pid)
@@ -453,18 +507,26 @@ public static class InputSender
         }
     }
 
-    private static void GuardPoint(int x, int y, int pid)
+    private static void GuardPoint(int x, int y, int pid, IntPtr requireRoot = default)
     {
         var h = NativeMethods.WindowFromPoint(new NativeMethods.Point { X = x, Y = y });
         var root = h == IntPtr.Zero ? IntPtr.Zero : NativeMethods.GetAncestor(h, NativeMethods.GaRoot);
         var owner = root == IntPtr.Zero ? 0 : NativeMethods.GetWindowProcessId(root);
+        if (IsInputTarget(pid, requireRoot, owner, root))
+        {
+            return;
+        }
+
+        var w = TopLevelWindows.Describe(root);
         if (owner != pid)
         {
-            var w = TopLevelWindows.Describe(root);
             throw GatewayException.NotReady(
                 $"The point {x},{y} is covered by " + (w is null ? "no window" : $"\"{UiText.Clip(w.Title, 60)}\" ({w.ProcessName}, pid {w.ProcessId})") +
                 $", not by process {pid}; refusing to click. Bring the target window to the front or scroll the element into view.");
         }
+
+        throw GatewayException.NotReady(
+            $"The point {x},{y} is covered by {DescribeOther(w)}, not by the target window; refusing to click. " + OtherWindowHint(w));
     }
 
     private static KeyStroke StrokeFor(string name, ushort[] mods, string all)

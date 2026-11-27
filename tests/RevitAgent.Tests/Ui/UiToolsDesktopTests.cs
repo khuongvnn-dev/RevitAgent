@@ -219,6 +219,50 @@ public class UiToolsDesktopTests
         await h.ExpectAsync(new { pid = h.Pid, selector = "id=lblStatus", text = "Child: from agent", exact = true });
     }
 
+    /// <summary>
+    /// Input aimed at the main window (ui_keys / ui_type without window, ui_click x/y) passed the safety check of the main
+    /// window only, so it must never land in a modal window of the same process that activation brings to the front
+    /// (in Revit: Enter on the "Security - Unsigned Add-In" prompt; review finding 2026-11-27).
+    /// </summary>
+    [DesktopFact]
+    public async Task UntargetedInput_ForTheMainWindow_NeverLandsInItsModalChild()
+    {
+        using var h = UiHarness.Start();
+        await h.CallAsync("ui_click", new { pid = h.Pid, selector = "id=btnOpenChild" });
+        await h.CallAsync("ui_wait", new { pid = h.Pid, window = "Child Settings", timeout_s = 10 });
+        await h.CallAsync("ui_click", new { pid = h.Pid, window = "Child Settings", selector = "id=txtChild", mouse = true }); // focus in the child's field
+
+        var windows = (await h.CallAsync("ui_list_windows", new { pid = h.Pid })).GetProperty("windows").EnumerateArray().ToArray();
+        var main = windows.Single(w => w.GetProperty("is_main").GetBoolean()).GetProperty("bounds");
+        var child = windows.Single(w => w.GetProperty("title").GetString() == "Child Settings").GetProperty("bounds");
+        var x = child.GetProperty("x").GetInt32() + (child.GetProperty("width").GetInt32() / 2) - main.GetProperty("x").GetInt32();
+        var y = child.GetProperty("y").GetInt32() + (child.GetProperty("height").GetInt32() / 2) - main.GetProperty("y").GetInt32();
+        Assert.InRange(x, 0, main.GetProperty("width").GetInt32() - 1); // the child is centered on its owner
+        Assert.InRange(y, 0, main.GetProperty("height").GetInt32() - 1);
+
+        var (code, msg) = await h.CallErrorAsync("ui_click", new { pid = h.Pid, x, y });
+        Assert.Equal(GatewayErrorCodes.TargetNotReady, code);
+        Assert.Contains("Child Settings", msg); // names the window in front, to be targeted explicitly
+
+        foreach (var (tool, args) in new (string, object)[] { ("ui_keys", new { pid = h.Pid, keys = "zz" }), ("ui_type", new { pid = h.Pid, text = "zz" }) })
+        {
+            var r = await h.CallRawAsync(tool, args);
+            if (r.IsError)
+            {
+                Assert.Equal(GatewayErrorCodes.TargetNotReady, r.ErrorCode);
+            }
+        }
+
+        var field = await h.CallAsync("ui_inspect", new { pid = h.Pid, window = "Child Settings", selector = "id=txtChild" });
+        Assert.DoesNotContain("zz", field.GetProperty("value").GetString() ?? string.Empty);
+
+        // Named explicitly, the child gets the keys (its own safety check applies).
+        await h.CallAsync("ui_keys", new { pid = h.Pid, window = "Child Settings", selector = "id=txtChild", keys = "ok" });
+        await h.CallAsync("ui_click", new { pid = h.Pid, window = "Child Settings", selector = "id=btnChildOk" });
+        await h.CallAsync("ui_wait", new { pid = h.Pid, window = "Child Settings", state = "gone", timeout_s = 10 });
+        await h.ExpectAsync(new { pid = h.Pid, selector = "id=lblStatus", text = "Child: ok", exact = true });
+    }
+
     [DesktopFact]
     public async Task Win32MessageBox_IsDialogClass_AndCanBeAnswered()
     {

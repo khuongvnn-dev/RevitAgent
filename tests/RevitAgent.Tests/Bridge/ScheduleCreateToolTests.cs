@@ -217,7 +217,7 @@ public class ScheduleCreateToolTests
     /// Fake Bridge for <paramref name="connections"/> sequential calls (one per connection, like BridgeClient). The next pipe
     /// instance is created as soon as a client connects, so the pipe never disappears between two calls. Records (tool, args).
     /// </summary>
-    private static Task RunScriptedBridge(string pipeName, int connections, Func<string, JsonElement, string> result, ConcurrentQueue<(string Tool, JsonElement Args)> requests, CancellationToken stop = default)
+    internal static Task RunScriptedBridge(string pipeName, int connections, Func<string, JsonElement, string> result, ConcurrentQueue<(string Tool, JsonElement Args)> requests, CancellationToken stop = default)
     {
         static NamedPipeServerStream NewInstance(string name) =>
             new(name, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);

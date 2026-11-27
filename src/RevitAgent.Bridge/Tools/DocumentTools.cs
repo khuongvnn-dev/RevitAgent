@@ -244,10 +244,12 @@ namespace RevitAgent.Bridge.Tools
                 throw ToolArgs.Invalid("doc_close never saves: pass save=false (or omit it).");
             }
 
+            // The gateway pins 'document' to the verified sandbox file: a path never falls back to a title match, since a
+            // sandbox copy keeps the title of its original (which may be open too, with the user's unsaved changes).
             var key = ctx.Args.Str("document") ?? ctx.Args.Str("path") ?? ctx.Args.Str("title");
             var doc = key == null
                 ? ctx.ActiveDocument ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No document is open.")
-                : ctx.FindOpenDocument(key) ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No open document matches '" + key + "'. Pass the title or path of an open document (doc_open opens one).");
+                : ctx.FindOpenDocument(key, exactPath: true) ?? throw new BridgeToolException(GatewayErrorCodes.NotFound, "No open document matches '" + key + "'. Pass the title or path of an open document (doc_open opens one).");
             if (doc.IsLinked)
             {
                 throw ToolArgs.Invalid("'" + doc.Title + "' is a linked model; it closes with its host document.");

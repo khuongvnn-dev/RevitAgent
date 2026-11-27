@@ -171,6 +171,7 @@ public class BridgeGatewayToolsTests
             Assert.Equal(GatewayErrorCodes.ValidationFailed, both.ErrorCode);
         }
 
+        // Sandbox enforcement off: path/title/document are normalized into 'document' and forwarded as given.
         var pipe = BridgeClientProtocolTests.NewPipeName();
         string? request = null;
         var server = BridgeClientProtocolTests.RunFakeBridge(pipe, (_, json) =>
@@ -179,14 +180,89 @@ public class BridgeGatewayToolsTests
             return "{\"id\":\"x\",\"ok\":true,\"result\":{\"closed\":true}}";
         });
         await using var sp = BuildGateway(out _, pipe);
+        sp.GetRequiredService<RevitAgent.Core.Policy.GatewayPolicy>().EnforceSandbox = false;
         var r = await sp.GetRequiredService<ToolRegistry>().InvokeAsync("doc_close", JsonSerializer.SerializeToElement(new { pid = Pid, path = @"C:\runs\copy.rvt", save = false }), "t", CancellationToken.None);
         await server;
         Assert.False(r.IsError);
         using var req = JsonDocument.Parse(request!);
+        Assert.Equal("doc_close", req.RootElement.GetProperty("tool").GetString());
         var args = req.RootElement.GetProperty("args");
         Assert.Equal(@"C:\runs\copy.rvt", args.GetProperty("document").GetString());
         Assert.False(args.TryGetProperty("save", out _));
         Assert.False(args.TryGetProperty("path", out _));
+    }
+
+    /// <summary>doc_close discards unsaved changes: it must never close the user's real model (review finding 2026-11-27).</summary>
+    [Theory]
+    [InlineData("""{"title":"model","path":"C:\\Projects\\model.rvt","is_active":false,"is_modified":true}""")]
+    [InlineData("""{"title":"central","path":"\\\\server\\share\\central.rvt"}""")]
+    [InlineData("""{"title":"Project1","path":""}""")] // never saved, not opened by doc_open
+    public async Task DocClose_OfADocumentOutsideTheSandbox_IsRefused_AndNeverForwarded(string docInfo)
+    {
+        var pipe = BridgeClientProtocolTests.NewPipeName();
+        var requests = new System.Collections.Concurrent.ConcurrentQueue<(string Tool, JsonElement Args)>();
+        using var stop = new CancellationTokenSource();
+        var server = ScheduleCreateToolTests.RunScriptedBridge(pipe, 2, (_, _) => docInfo, requests, stop.Token);
+
+        await using var sp = BuildGateway(out _, pipe);
+        var r = await sp.GetRequiredService<ToolRegistry>().InvokeAsync(
+            "doc_close",
+            JsonSerializer.SerializeToElement(new { pid = Pid, title = "model", activate_other = true }),
+            "t",
+            CancellationToken.None);
+        stop.Cancel();
+        await Task.WhenAny(server, Task.Delay(2000));
+
+        Assert.Equal(GatewayErrorCodes.SandboxViolation, r.ErrorCode);
+        var call = Assert.Single(requests.ToArray());
+        Assert.Equal("doc_info", call.Tool);
+        Assert.Equal("model", call.Args.GetProperty("document").GetString()); // the agent's key is what gets checked
+    }
+
+    [Fact]
+    public async Task DocClose_OfASandboxCopy_IsForwarded_WithTheDocumentPinnedToItsVerifiedPath()
+    {
+        var pipe = BridgeClientProtocolTests.NewPipeName();
+        var requests = new System.Collections.Concurrent.ConcurrentQueue<(string Tool, JsonElement Args)>();
+        string? copy = null;
+        var server = ScheduleCreateToolTests.RunScriptedBridge(pipe, 2, (tool, _) => tool == "doc_info"
+            ? JsonSerializer.Serialize(new { title = "model", path = copy, is_active = false })
+            : """{"closed":true,"title":"model","discarded_changes":false,"saved":false}""",
+            requests);
+
+        await using var sp = BuildGateway(out var paths, pipe);
+        copy = Path.Combine(paths.RunsDir, "r1", "sub", "..", "model.rvt");
+        var r = await sp.GetRequiredService<ToolRegistry>().InvokeAsync(
+            "doc_close",
+            JsonSerializer.SerializeToElement(new { pid = Pid, title = "model", activate_other = true, save = false }),
+            "t",
+            CancellationToken.None);
+        await server;
+
+        Assert.False(r.IsError, (r.Content[0] as TextContent)?.Text);
+        Assert.True(r.Structured!.Value.GetProperty("closed").GetBoolean());
+        var calls = requests.ToArray();
+        Assert.Equal(new[] { "doc_info", "doc_close" }, calls.Select(c => c.Tool));
+        Assert.Equal("model", calls[0].Args.GetProperty("document").GetString());
+        var forwarded = calls[1].Args;
+        Assert.Equal(Path.GetFullPath(copy), forwarded.GetProperty("document").GetString()); // the Bridge matches this path exactly
+        Assert.True(forwarded.GetProperty("activate_other").GetBoolean());
+        Assert.False(forwarded.TryGetProperty("title", out _));
+        Assert.False(forwarded.TryGetProperty("save", out _));
+        Assert.False(forwarded.TryGetProperty("pid", out _));
+    }
+
+    [Theory]
+    [InlineData("Wall,Door")]
+    [InlineData("+12")]
+    [InlineData("Save")]
+    [InlineData(" ID_FILE_SAVE")]
+    public async Task CommandPost_RefusesBlockedOrAmbiguousCommands_BeforeReachingRevit(string command)
+    {
+        // No fake Bridge listens on this pipe: reaching it would be DEPENDENCY_FAILED, not PERMISSION_DENIED.
+        await using var sp = BuildGateway(out _);
+        var r = await sp.GetRequiredService<ToolRegistry>().InvokeAsync("command_post", JsonSerializer.SerializeToElement(new { pid = Pid, command }), "t", CancellationToken.None);
+        Assert.Equal(GatewayErrorCodes.PermissionDenied, r.ErrorCode);
     }
 
     [Fact]

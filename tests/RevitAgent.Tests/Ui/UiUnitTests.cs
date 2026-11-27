@@ -141,6 +141,30 @@ public class UiUnitTests
         Assert.Equal(GatewayErrorCodes.ValidationFailed, Assert.Throws<GatewayException>(() => InputSender.ParseSendKeys("^")).Code);
     }
 
+    /// <summary>
+    /// Untargeted input (ui_keys / ui_type without ref, ui_click x/y) must reach the very window that passed the safety check:
+    /// activating Revit's main window brings its modal "Security - Unsigned Add-In" dialog (same pid) to the front, and Enter
+    /// would answer it (review finding 2026-11-27). Without a required root only the process is checked, as before.
+    /// </summary>
+    [Theory]
+    [InlineData(100, 0L, 100, 0x10L, true)] // no required root: any window of the process
+    [InlineData(100, 0L, 200, 0x10L, false)] // another process
+    [InlineData(100, 0L, 100, 0L, false)] // no window in front / under the point
+    [InlineData(100, 0x10L, 100, 0x10L, true)] // the target window itself
+    [InlineData(100, 0x10L, 100, 0x20L, false)] // another window of the same process (its modal dialog)
+    [InlineData(100, 0x10L, 200, 0x10L, false)]
+    [InlineData(100, 0x10L, 100, 0L, false)]
+    public void InputTarget_IsTheRequiredTopLevelWindow_NotJustTheSameProcess(int pid, long requireRoot, int actualPid, long actualRoot, bool allowed) =>
+        Assert.Equal(allowed, InputSender.IsInputTarget(pid, new IntPtr(requireRoot), actualPid, new IntPtr(actualRoot)));
+
+    [Fact]
+    public async Task KeysDescription_SaysKeysGoToTheTargetWindow()
+    {
+        await using var sp = TestGateway.BuildProvider(out _);
+        Assert.True(sp.GetRequiredService<ToolRegistry>().TryGet("ui_keys", out var tool));
+        Assert.Contains("only sent while the target window is in the foreground", tool.Description);
+    }
+
     [Fact]
     public void ScriptValidator_AcceptsTheDocumentedExampleFormat()
     {

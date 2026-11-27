@@ -71,7 +71,9 @@ public sealed class HumanAskTool : GatewayTool
             }
 
             var root = Path.GetFullPath(_paths.Root);
-            if (!fullScreenshot.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            // Compare with a trailing separator: a sibling such as "<root>X\a.png" must not pass.
+            var rootPrefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!fullScreenshot.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 throw GatewayException.Validation($"Argument 'screenshot_path' must be under REVITAGENT_HOME ('{root}').");
             }

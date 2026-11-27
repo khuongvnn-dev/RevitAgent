@@ -34,7 +34,7 @@
 
 | Tool | Core | Permission | Parameters | Description (short) |
 |---|---|---|---|---|
-| `doc_close` |  | Write | `pid`*, `path`, `title`, `document`, `activate_other`, `activate_document`, `save` | Close an open document in Revit pid WITHOUT saving (changes are discarded; it never saves). |
+| `doc_close` |  | Write | `pid`*, `path`, `title`, `document`, `activate_other`, `activate_document`, `save` | Close an open sandbox copy (else SANDBOX_VIOLATION) in Revit pid WITHOUT saving (changes are discarded; it never saves). |
 | `doc_info` |  | Read | `pid`*, `document` | Describe a document open in Revit pid: title, path, is_workshared, is_modifiable/modified, active view (name, id, type), project info, display units (length/area/volume/angle) and the Revit version/build. |
 | `doc_list_open` |  | Read | `pid`* | List the documents open in Revit pid (title, path, active, linked, family, workshared, modified). |
 | `doc_open` | yes | Write | `pid`*, `path`*, `detach_from_central`, `audit`, `activate`, `worksets` | Open a model COPY in Revit pid: the path must be in the sandbox (sandbox_copy_model); originals get SANDBOX_VIOLATION. |

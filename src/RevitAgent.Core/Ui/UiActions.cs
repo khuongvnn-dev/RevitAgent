@@ -130,7 +130,8 @@ public static class UiActions
 
         int sx = w.Left + x, sy = w.Top + y;
         InputSender.EnsureForeground(w.Handle, w.ProcessId, "a mouse click", op.Token);
-        InputSender.Click(sx, sy, button, doubleClick ? 2 : 1, w.ProcessId, op.Token);
+        EnsureForegroundIsTarget(op, w, "a mouse click");
+        InputSender.Click(sx, sy, button, doubleClick ? 2 : 1, w.ProcessId, op.Token, requireRoot: w.Handle);
         string? hit = null;
         try
         {
@@ -302,6 +303,7 @@ public static class UiActions
     {
         UiSafety.EnsureActionAllowed(op, w);
         InputSender.EnsureForeground(w.Handle, w.ProcessId, "typing", op.Token);
+        EnsureForegroundIsTarget(op, w, "typing");
         try
         {
             var focused = op.Core.Native.GetFocusedElement();
@@ -315,7 +317,7 @@ public static class UiActions
             throw GatewayException.NotReady("Could not read the focused element (to make sure it is not a password field); nothing was typed. Pass a ref/selector of the field.");
         }
 
-        InputSender.TypeText(text, w.ProcessId, op.Token);
+        InputSender.TypeText(text, w.ProcessId, op.Token, requireRoot: w.Handle);
         return new Dictionary<string, object?> { ["action"] = "keyboard", ["chars"] = text.Length, ["into"] = "focused element" };
     }
 
@@ -1021,6 +1023,32 @@ public static class UiActions
         {
             // Pattern actions work without focus.
         }
+    }
+
+    /// <summary>
+    /// For input that goes to whatever is in front (keys, typing into the focused element, an x/y click), right after
+    /// <see cref="InputSender.EnsureForeground"/>: the safety check ran on <paramref name="w"/>, but activating it brings a
+    /// modal dialog it owns (e.g. Revit's unsigned add-in security prompt) to the front instead. Unless the foreground window
+    /// is <paramref name="w"/> itself nothing is sent: a forbidden dialog of the same process is PERMISSION_DENIED (its own
+    /// safety check), any other window TARGET_NOT_READY naming it, so the agent can target it explicitly.
+    /// </summary>
+    public static void EnsureForegroundIsTarget(UiOp op, TopLevelWindow w, string why)
+    {
+        var root = InputSender.ForegroundRoot();
+        if (InputSender.IsInputTarget(w.ProcessId, w.Handle, root == IntPtr.Zero ? 0 : NativeMethods.GetWindowProcessId(root), root))
+        {
+            return;
+        }
+
+        var front = TopLevelWindows.Describe(root);
+        if (front is not null && front.ProcessId == w.ProcessId)
+        {
+            UiSafety.EnsureActionAllowed(op, front);
+        }
+
+        throw GatewayException.NotReady(
+            $"Nothing was sent for {why}: the foreground window is {InputSender.DescribeOther(front)}, not \"{UiText.Clip(w.Title, 60)}\". " +
+            InputSender.OtherWindowHint(front));
     }
 
     /// <summary>

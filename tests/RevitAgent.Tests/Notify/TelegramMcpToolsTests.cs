@@ -182,6 +182,37 @@ public class TelegramMcpToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task HumanAsk_ScreenshotInASiblingFolderWithTheSamePrefix_IsRefused()
+    {
+        // "<home>X\shot.png" starts with "<home>" as text but is not under it (review finding 2026-11-27).
+        var siblingDir = _paths.Root.TrimEnd(Path.DirectorySeparatorChar) + "X";
+        Directory.CreateDirectory(siblingDir);
+        try
+        {
+            var siblingPng = Path.Combine(siblingDir, "shot.png");
+            File.WriteAllBytes(siblingPng, new byte[] { 0x89, 0x50, 0x4E, 0x47, 1 });
+            var escalation = new FakeHumanEscalation();
+            var tool = new HumanAskTool(escalation, _paths);
+            var args = JsonSerializer.SerializeToElement(new
+            {
+                question = "Pick one",
+                options = new[] { "A", "B" },
+                safe_option = "A",
+                screenshot_path = siblingPng
+            });
+
+            var ex = await Assert.ThrowsAsync<GatewayException>(() =>
+                tool.ExecuteAsync(new ToolCall(tool.Name, args), CancellationToken.None));
+            Assert.Equal(GatewayErrorCodes.ValidationFailed, ex.Code);
+            Assert.Null(escalation.LastQuestion); // nothing was sent to the owner
+        }
+        finally
+        {
+            Directory.Delete(siblingDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task HumanAsk_Success_InvokesEscalationAndReturnsResult()
     {
         var escalation = new FakeHumanEscalation

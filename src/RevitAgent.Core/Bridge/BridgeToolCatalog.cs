@@ -78,7 +78,7 @@ public static class BridgeToolCatalog
         new BridgeToolDefinition(
             BridgeToolNames.DocClose,
             ToolPermission.Write,
-            "Close an open document in Revit pid WITHOUT saving (changes are discarded; it never saves). Revit cannot close the active document through the API: " +
+            "Close an open sandbox copy (else SANDBOX_VIOLATION) in Revit pid WITHOUT saving (changes are discarded; it never saves). Revit cannot close the active document through the API: " +
             "if the target is the active document, pass activate_other=true to first switch to another ALREADY-open document (activate_document names which; it never opens a file), " +
             "otherwise you get CONFLICT with guidance. The only open document cannot be closed this way (close Revit with revit_close). " +
             "Identify the document by path or title (doc_list_open); default is the active document. save=true is rejected (VALIDATION_FAILED): the gateway never saves models." + Requires,
@@ -90,7 +90,8 @@ public static class BridgeToolCatalog
                 .String("activate_document", "With activate_other: title or path of the already-open document to make active (falls back to any other qualifying one).")
                 .Boolean("save", "Must be false: documents are always closed without saving.", defaultValue: false),
             TimeoutSeconds: 120,
-            Prepare: PrepareDocClose),
+            Prepare: PrepareDocClose,
+            SandboxDocument: true),
 
         new BridgeToolDefinition(
             BridgeToolNames.ModelListCategories,

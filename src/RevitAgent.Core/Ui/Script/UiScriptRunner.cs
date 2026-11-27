@@ -577,6 +577,7 @@ public sealed class UiScriptRunner
         UiSafety.EnsureActionAllowed(_op, w);
         UiActions.EnsureAltF4Safe(_op, strokes, w);
         InputSender.EnsureForeground(w.Handle, _pid, "keys", _op.Token);
+        UiActions.EnsureForegroundIsTarget(_op, w, "keys");
         if (t is not null)
         {
             UiActions.FocusElement(_op, t.Wrap(_op.Core));
@@ -584,7 +585,7 @@ public sealed class UiScriptRunner
         }
 
         UiActions.EnsureAltF4Safe(_op, strokes, w, afterActivation: true);
-        InputSender.SendStrokes(strokes, _pid, _op.Token);
+        InputSender.SendStrokes(strokes, _pid, _op.Token, requireRoot: w.Handle);
         return $"sent keys {keys} to \"{UiText.Clip(w.Title, 60)}\"";
     }
 
@@ -831,7 +832,7 @@ public sealed class UiScriptRunner
                         UiActions.EnsureAltF4Safe(_op, strokes, w);
                         InputSender.EnsureForeground(w.Handle, _pid, "a dialog rule", _op.Token);
                         UiActions.EnsureAltF4Safe(_op, strokes, w, afterActivation: true);
-                        InputSender.SendStrokes(strokes, _pid, _op.Token);
+                        InputSender.SendStrokes(strokes, _pid, _op.Token, requireRoot: w.Handle);
                         msg = $"sent keys {r.Keys}";
                     }
                     else

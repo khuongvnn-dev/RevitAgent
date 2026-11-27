@@ -174,17 +174,22 @@ namespace RevitAgent.Bridge.Tools
 
         public static object? PostCommand(ToolContext ctx)
         {
-            var command = ctx.Args.ReqStr("command");
-            var blocked = RevitAgent.Contracts.Bridge.CommandSafety.BlockReason(command);
-            if (blocked != null)
+            var command = ctx.Args.ReqStr("command").Trim();
+            if (command.Length == 0)
             {
-                throw new BridgeToolException(GatewayErrorCodes.PermissionDenied, blocked);
+                throw ToolArgs.Invalid("'command' must not be empty.");
             }
 
-            RevitCommandId? id = null;
+            RefuseBlocked(RevitAgent.Contracts.Bridge.CommandSafety.BlockReason(command));
+
+            // An exact name only: Enum.TryParse would read "Wall,Save" as Wall|Save and "+12" as the value 12.
+            RevitCommandId? id;
             string resolvedAs;
-            if (Enum.TryParse(command, true, out PostableCommand postable) && Enum.IsDefined(typeof(PostableCommand), postable) && !IsNumeric(command))
+            var postableName = Enum.GetNames(typeof(PostableCommand)).FirstOrDefault(n => string.Equals(n, command, StringComparison.OrdinalIgnoreCase));
+            if (postableName != null)
             {
+                var postable = (PostableCommand)Enum.Parse(typeof(PostableCommand), postableName);
+                RefuseBlocked(RevitAgent.Contracts.Bridge.CommandSafety.BlockReason(postable.ToString()));
                 id = RevitCommandId.LookupPostableCommandId(postable);
                 resolvedAs = "postable_command";
             }
@@ -200,6 +205,9 @@ namespace RevitAgent.Bridge.Tools
                     GatewayErrorCodes.NotFound,
                     "Unknown command '" + command + "'. Pass a PostableCommand name (command_list_postable) or a ribbon item's command_id (ribbon_list_items), e.g. ID_OBJECTS_WALL or CustomCtrl_%CustomCtrl_%Tab%Panel%Button.");
             }
+
+            // What Revit resolved (e.g. ID_FILE_SAVE) is checked too, whatever the agent's text looked like.
+            RefuseBlocked(RevitAgent.Contracts.Bridge.CommandSafety.ResolvedIdBlockReason(id.Name));
 
             if (!ctx.App.CanPostCommand(id))
             {
@@ -369,7 +377,13 @@ namespace RevitAgent.Bridge.Tools
         private static bool IsCommandKind(RibbonItem item) =>
             !(item is RibbonLabel) && !(item is RibbonCombo) && !(item is RibbonTextBox);
 
-        private static bool IsNumeric(string s) => s.Length > 0 && s.All(ch => char.IsDigit(ch) || ch == '-');
+        private static void RefuseBlocked(string? reason)
+        {
+            if (reason != null)
+            {
+                throw new BridgeToolException(GatewayErrorCodes.PermissionDenied, reason);
+            }
+        }
 
         private static bool Contains(string? haystack, string needle) =>
             haystack != null && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
