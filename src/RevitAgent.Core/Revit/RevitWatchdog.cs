@@ -309,7 +309,7 @@ public sealed class RevitWatchdog : IDisposable, IAsyncDisposable
         var lastTitle = state.LastKnownTitle ?? "(none)";
         var journalPath = _journalFinder(entry.Year);
 
-        var message = $"Revit {entry.Year} (pid {entry.Pid}) gặp sự cố/crash (exit code: {exitCodeStr}, tiêu đề: '{lastTitle}')." +
+        var message = $"Revit {entry.Year} (pid {entry.Pid}) crashed (exit code: {exitCodeStr}, title: '{lastTitle}')." +
                       (journalPath != null ? $"\nJournal: {journalPath}" : string.Empty);
 
         try
@@ -377,7 +377,7 @@ public sealed class RevitWatchdog : IDisposable, IAsyncDisposable
 
                 var title = state.LastKnownTitle ?? probe.MainWindowTitle ?? "(none)";
                 var images = shotPath != null && File.Exists(shotPath) ? new[] { shotPath } : null;
-                var text = $"Revit {entry.Year} (pid {entry.Pid}) không phản hồi sau {options.HangAfterSec}s (tiêu đề: '{title}').";
+                var text = $"Revit {entry.Year} (pid {entry.Pid}) is not responding after {options.HangAfterSec}s (title: '{title}').";
 
                 _ = Task.Run(async () =>
                 {
@@ -418,7 +418,7 @@ public sealed class RevitWatchdog : IDisposable, IAsyncDisposable
                 {
                     try
                     {
-                        await _notifier.NotifyAsync(NotificationKind.RevitHang, $"Revit (pid {entry.Pid}) đã phản hồi lại.", ct: ct).ConfigureAwait(false);
+                        await _notifier.NotifyAsync(NotificationKind.RevitHang, $"Revit (pid {entry.Pid}) is responding again.", ct: ct).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {

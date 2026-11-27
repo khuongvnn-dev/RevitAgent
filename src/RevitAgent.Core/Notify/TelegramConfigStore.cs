@@ -93,6 +93,30 @@ public sealed class TelegramConfigStore
         }
     }
 
+    /// <summary>Writes a temp file in the same folder, then moves it over the target, so a crash never leaves a half-written file.</summary>
+    private static void WriteAtomically(string path, byte[] bytes)
+    {
+        var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllBytes(temp, bytes);
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                try
+                {
+                    File.Delete(temp);
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
+    }
+
     public void Save(TelegramOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -110,14 +134,14 @@ public sealed class TelegramConfigStore
             };
 
             var json = JsonSerializer.Serialize(plainConfig, GatewayJson.Options);
-            File.WriteAllText(JsonPath, json, new UTF8Encoding(false));
+            WriteAtomically(JsonPath, new UTF8Encoding(false).GetBytes(json));
 
             // 2. Save encrypted bot token using DPAPI CurrentUser
             if (!string.IsNullOrWhiteSpace(options.BotToken))
             {
                 var plainBytes = Encoding.UTF8.GetBytes(options.BotToken.Trim());
                 var encryptedBytes = ProtectedData.Protect(plainBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
-                File.WriteAllBytes(TokenPath, encryptedBytes);
+                WriteAtomically(TokenPath, encryptedBytes);
             }
             else if (File.Exists(TokenPath))
             {

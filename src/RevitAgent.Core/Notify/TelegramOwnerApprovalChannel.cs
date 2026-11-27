@@ -35,6 +35,7 @@ public sealed class TelegramOwnerApprovalChannel : IOwnerApprovalChannel
             request.Timeout)
         {
             CancelNote = () => "Request closed (answered on another channel or cancelled).",
+            BypassQueue = true,
         };
 
         var answer = await _escalation.AskAsync(question, cancellationToken).ConfigureAwait(false);

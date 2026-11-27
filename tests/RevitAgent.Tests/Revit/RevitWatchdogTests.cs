@@ -103,7 +103,7 @@ public class RevitWatchdogTests
 
         var hangCall = Assert.Single(notifier.Calls);
         Assert.Equal(NotificationKind.RevitHang, hangCall.Kind);
-        Assert.Contains("không phản hồi sau 120s", hangCall.Text);
+        Assert.Contains("not responding after 120s", hangCall.Text);
         Assert.Contains("TestProject.rvt", hangCall.Text);
         Assert.NotNull(hangCall.Images);
         Assert.Single(hangCall.Images);
@@ -131,7 +131,7 @@ public class RevitWatchdogTests
 
         Assert.Equal(2, notifier.Calls.Count);
         var recoveryCall = notifier.Calls[1];
-        Assert.Contains("đã phản hồi lại", recoveryCall.Text);
+        Assert.Contains("responding again", recoveryCall.Text);
 
         Assert.Equal(2, watchdogEvents.Count);
         var recoveryEv = watchdogEvents[1];
@@ -187,7 +187,7 @@ public class RevitWatchdogTests
 
         var crashCall = Assert.Single(notifier.Calls);
         Assert.Equal(NotificationKind.RevitCrash, crashCall.Kind);
-        Assert.Contains("gặp sự cố/crash", crashCall.Text);
+        Assert.Contains("crashed", crashCall.Text);
         Assert.Contains("-1073741819", crashCall.Text);
         Assert.Contains("Autodesk Revit 2024", crashCall.Text);
         Assert.Contains("journal.0999.txt", crashCall.Text);
@@ -320,6 +320,6 @@ public class RevitWatchdogTests
         await WaitForCallsAsync(notifier, 1);
 
         Assert.Single(notifier.Calls);
-        Assert.Contains("không phản hồi sau 20s", notifier.Calls[0].Text);
+        Assert.Contains("not responding after 20s", notifier.Calls[0].Text);
     }
 }

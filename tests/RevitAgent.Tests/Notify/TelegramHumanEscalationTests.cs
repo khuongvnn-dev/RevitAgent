@@ -78,7 +78,7 @@ public class TelegramHumanEscalationTests : IDisposable
         {
             var uri = req.RequestUri!.ToString();
 
-            if (uri.Contains("sendMessage") && !uri.Contains("Đã chọn"))
+            if (uri.Contains("sendMessage") && !uri.Contains("Selected:"))
             {
                 // Inspect inline keyboard to extract question id
                 var json = req.Content!.ReadAsStringAsync().Result;
@@ -156,7 +156,7 @@ public class TelegramHumanEscalationTests : IDisposable
         Assert.Contains(fakeHandler.Requests, r => r.RequestUri!.ToString().Contains("answerCallbackQuery"));
         Assert.Contains(fakeHandler.Requests, r => r.RequestUri!.ToString().Contains("editMessageReplyMarkup"));
         Assert.Contains(fakeHandler.Requests, r => r.RequestUri!.ToString().Contains("sendMessage") &&
-                                                   r.Content!.ReadAsStringAsync().Result.Contains("Đã chọn: Discard"));
+                                                   r.Content!.ReadAsStringAsync().Result.Contains("Selected: Discard"));
     }
 
     [Fact]
@@ -330,6 +330,6 @@ public class TelegramHumanEscalationTests : IDisposable
         // Timeout message sent
         Assert.Contains(fakeHandler.Requests, r =>
             r.RequestUri!.ToString().Contains("sendMessage") &&
-            r.Content!.ReadAsStringAsync().Result.Contains("Hết giờ — chọn an toàn: Postpone"));
+            r.Content!.ReadAsStringAsync().Result.Contains("Timed out - safe option chosen: Postpone"));
     }
 }

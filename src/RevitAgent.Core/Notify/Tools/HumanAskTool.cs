@@ -84,7 +84,7 @@ public sealed class HumanAskTool : GatewayTool
         }
 
         var humanQuestion = new HumanQuestion(
-            Title: "Yêu cầu quyết định từ Agent",
+            Title: "Decision requested by the agent",
             Text: question,
             ScreenshotPath: screenshotPath,
             Options: options,

@@ -178,21 +178,31 @@ namespace RevitAgent.Tests
             Assert.Equal(string.Empty, service.GetString(null!));
         }
 
+        [Theory]
+        [InlineData("vi-VN", "vi-VN")]
+        [InlineData("vi", "vi-VN")]
+        [InlineData("en-US", "en-US")]
+        [InlineData("de-DE", "en-US")]
+        public void AppConfig_DefaultLanguageFor_IsEnglishUnlessVietnamese(string os, string expected)
+        {
+            Assert.Equal(expected, AppConfig.DefaultLanguageFor(new System.Globalization.CultureInfo(os)));
+        }
+
         [Fact]
-        public void AppConfig_LanguageProperty_DefaultsToViVnAndHandlesNull()
+        public void AppConfig_LanguageProperty_DefaultsToOsCultureAndHandlesNull()
         {
             // Arrange
             var config = new AppConfig();
 
-            // Assert default
-            Assert.Equal(LocalizationService.CultureVietnamese, config.Language);
+            // Assert default (en-US unless the OS UI culture is Vietnamese)
+            Assert.Equal(AppConfig.DefaultLanguage, config.Language);
 
             // Act - Set null or whitespace
             config.Language = null!;
-            Assert.Equal(LocalizationService.CultureVietnamese, config.Language);
+            Assert.Equal(AppConfig.DefaultLanguage, config.Language);
 
             config.Language = "   ";
-            Assert.Equal(LocalizationService.CultureVietnamese, config.Language);
+            Assert.Equal(AppConfig.DefaultLanguage, config.Language);
 
             // Act - Set en-US
             config.Language = LocalizationService.CultureEnglish;

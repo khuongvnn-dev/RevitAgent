@@ -97,6 +97,23 @@ public sealed class EncryptedConfigTests : IDisposable
         Assert.Equal(original.IpcPipeName, loaded.IpcPipeName);
     }
 
+    [Fact]
+    public void QuarantineConfigFile_MovesDamagedFileAsideWithTimestamp()
+    {
+        string filePath = Path.Combine(_tempDirectory, $"damaged_{Guid.NewGuid():N}.enc");
+        File.WriteAllBytes(filePath, new byte[] { 1, 2, 3, 4 });
+        var manager = new EncryptedConfigManager(filePath);
+        Assert.ThrowsAny<System.Security.Cryptography.CryptographicException>(() => manager.LoadConfig());
+
+        var moved = manager.QuarantineConfigFile(new DateTime(2026, 11, 27, 9, 8, 7));
+
+        Assert.Equal(filePath + ".bad-20261127-090807", moved);
+        Assert.False(File.Exists(filePath));
+        Assert.True(File.Exists(moved));
+        Assert.Null(manager.QuarantineConfigFile()); // nothing left to move
+        Assert.NotNull(manager.LoadConfig()); // defaults again
+    }
+
     [Theory]
     [InlineData("PlainText")]
     [InlineData("JsonPlain")]

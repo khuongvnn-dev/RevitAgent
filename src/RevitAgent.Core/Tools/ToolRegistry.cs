@@ -72,6 +72,7 @@ public sealed class ToolRegistry
         ToolResult result;
         var grantUsed = false;
         var budget = tool.Timeout;
+        Task<ToolResult>? work = null;
         try
         {
             _policy.EnsureAllowed(tool);
@@ -79,7 +80,6 @@ public sealed class ToolRegistry
             budget = tool.TimeoutFor(call);
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(budget);
-            Task<ToolResult> work;
             using (Sandbox.EvidenceService.Enter(call))
             {
                 work = tool.ExecuteAsync(call, timeoutCts.Token);
@@ -94,7 +94,7 @@ public sealed class ToolRegistry
                 ObserveLate(work, call);
                 throw new GatewayException(
                     GatewayErrorCodes.Timeout,
-                    $"Tool '{call.Name}' did not finish within {budget.TotalSeconds:0}s. It may still be running in Revit — check state (revit_get_state) before retrying.");
+                    $"Tool '{call.Name}' did not finish within {budget.TotalSeconds:0}s. It may still be running in Revit — check Revit with revit_list_instances / revit_list_dialogs before retrying.");
             }
         }
         catch (GatewayException gex)
@@ -103,6 +103,12 @@ public sealed class ToolRegistry
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // The tool may still be running: observe its late outcome exactly as for a timeout.
+            if (work is not null)
+            {
+                ObserveLate(work, call);
+            }
+
             result = ToolResult.Error(new GatewayException(GatewayErrorCodes.Timeout, $"Call to '{call.Name}' was cancelled by the client."));
         }
         catch (OperationCanceledException)

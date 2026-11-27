@@ -158,11 +158,11 @@ public sealed class TelegramNotifier : INotifier
 
     private static string FormatKindHeader(NotificationKind kind) => kind switch
     {
-        NotificationKind.RunResult => "🏁 <b>[RunResult] Kết quả kịch bản</b>",
-        NotificationKind.RevitHang => "⚠️ <b>[RevitHang] Cảnh báo Revit bị treo</b>",
-        NotificationKind.RevitCrash => "🔥 <b>[RevitCrash] Revit gặp sự cố/crash</b>",
-        NotificationKind.AddinBlocked => "🛡️ <b>[AddinBlocked] Add-in chưa đăng ký bị chặn</b>",
-        NotificationKind.AgentNeedsHuman => "🙋 <b>[AgentNeedsHuman] AI Agent cần trợ giúp từ bạn</b>",
-        _ => $"📢 <b>[{kind}] Thông báo RevitAgent</b>"
+        NotificationKind.RunResult => "🏁 <b>[RunResult] Scenario result</b>",
+        NotificationKind.RevitHang => "⚠️ <b>[RevitHang] Revit is not responding</b>",
+        NotificationKind.RevitCrash => "🔥 <b>[RevitCrash] Revit crashed</b>",
+        NotificationKind.AddinBlocked => "🛡️ <b>[AddinBlocked] Unregistered add-in blocked</b>",
+        NotificationKind.AgentNeedsHuman => "🙋 <b>[AgentNeedsHuman] The AI agent needs your help</b>",
+        _ => $"📢 <b>[{kind}] RevitAgent notification</b>"
     };
 }

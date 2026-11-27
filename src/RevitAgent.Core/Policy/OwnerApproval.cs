@@ -31,6 +31,9 @@ public sealed record OwnerApprovalRequest(string Tool, string SessionId, IReadOn
 /// <summary>The owner's decision (or the reason there was none). Anything but <see cref="Approved"/> is a deny.</summary>
 public sealed record OwnerDecision(bool Approved, string Channel, string By, string Reason, bool Explicit = true)
 {
+    /// <summary>True when the request was cancelled by the client before anyone decided (audited as "cancelled").</summary>
+    public bool Cancelled { get; init; }
+
     public static OwnerDecision Deny(string channel, string by, string reason, bool isExplicit = true) => new(false, channel, by, reason, isExplicit);
 
     public static OwnerDecision Approve(string channel, string by) => new(true, channel, by, "approved");
@@ -92,7 +95,18 @@ public sealed class OwnerApprovalService : IOwnerApproval
 
     public async Task<OwnerDecision> RequestAsync(OwnerApprovalRequest request, CancellationToken cancellationToken)
     {
-        var decision = await DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        OwnerDecision decision;
+        try
+        {
+            decision = await DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The client gave up before the owner answered: still leave an audit entry.
+            Record(request, OwnerDecision.Deny("none", "system", "cancelled by the client", isExplicit: false) with { Cancelled = true });
+            throw;
+        }
+
         Record(request, decision);
         return decision;
     }
@@ -182,14 +196,14 @@ public sealed class OwnerApprovalService : IOwnerApproval
                 tool = request.Tool,
                 years = request.Years,
                 channel = decision.Channel,
-                decision = decision.Approved ? "approved" : "denied",
+                decision = decision.Approved ? "approved" : decision.Cancelled ? "cancelled" : "denied",
                 by = decision.By,
                 reason = decision.Reason,
             })),
             decision.Approved,
             decision.Approved ? null : Contracts.Protocol.GatewayErrorCodes.PermissionDenied,
             0,
-            Note: $"{request.Tool} {(decision.Approved ? "approved" : "denied")} via {decision.Channel} by {decision.By}"));
+            Note: $"{request.Tool} {(decision.Approved ? "approved" : decision.Cancelled ? "cancelled" : "denied")} via {decision.Channel} by {decision.By}"));
 }
 
 /// <summary>

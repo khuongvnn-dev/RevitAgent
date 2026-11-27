@@ -23,6 +23,8 @@ namespace RevitAgent.Host
 
         public App()
         {
+            RegisterGlobalExceptionHandlers();
+
             _host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
                 {
@@ -31,6 +33,36 @@ namespace RevitAgent.Host
                 .Build();
 
             Services = _host.Services;
+        }
+
+        private void RegisterGlobalExceptionHandlers()
+        {
+            DispatcherUnhandledException += (_, args) =>
+            {
+                LogUnhandled("Dispatcher", args.Exception);
+                // Keep the dashboard alive for ordinary errors; only out-of-memory style failures are fatal.
+                args.Handled = args.Exception is not (OutOfMemoryException or StackOverflowException or AccessViolationException);
+            };
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+                LogUnhandled("AppDomain" + (args.IsTerminating ? " (terminating)" : string.Empty), args.ExceptionObject as Exception);
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                LogUnhandled("Task", args.Exception);
+                args.SetObserved();
+            };
+        }
+
+        private void LogUnhandled(string source, Exception? ex)
+        {
+            try
+            {
+                Services?.GetService<RevitAgent.Core.Audit.AuditLog>()?.Diagnostic($"Unhandled exception ({source})", ex);
+                Services?.GetService<IAuditLogService>()?.AddLog("Error", "UnhandledException", $"{source}: {ex?.GetType().Name}: {ex?.Message}");
+            }
+            catch (Exception)
+            {
+                // Logging must never throw from an exception handler.
+            }
         }
 
         public static void ConfigureAppServices(IServiceCollection services, AgentPaths? paths = null)
@@ -84,7 +116,24 @@ namespace RevitAgent.Host
             var configService = _host.Services.GetRequiredService<IEncryptedConfigService>();
             var localizationService = _host.Services.GetRequiredService<ILocalizationService>();
             var themeService = _host.Services.GetRequiredService<IThemeService>();
-            var config = configService.LoadConfig();
+            AppConfig config;
+            try
+            {
+                config = configService.LoadConfig();
+            }
+            catch (Exception ex)
+            {
+                // A damaged file, or one written by another user/machine (DPAPI), must not stop the app from starting:
+                // keep it aside for inspection and continue with defaults.
+                var moved = new EncryptedConfigManager(configService.ConfigFilePath).QuarantineConfigFile();
+                _host.Services.GetService<RevitAgent.Core.Audit.AuditLog>()?.Diagnostic(
+                    $"Configuration file '{configService.ConfigFilePath}' could not be read; " +
+                    (moved is null ? "continuing with defaults." : $"moved to '{moved}' and continuing with defaults."), ex);
+                _host.Services.GetService<IAuditLogService>()?.AddLog("Config", "ConfigReset",
+                    moved is null ? "Configuration unreadable; defaults used." : $"Configuration unreadable; saved aside as {System.IO.Path.GetFileName(moved)}; defaults used.");
+                config = new AppConfig();
+            }
+
             localizationService.SetLanguage(config.Language);
             themeService.SetThemeMode(config.ThemeMode);
 

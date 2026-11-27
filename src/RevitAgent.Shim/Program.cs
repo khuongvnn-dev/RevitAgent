@@ -158,13 +158,29 @@ namespace RevitAgent.Shim
 
             var stdin = Console.OpenStandardInput();
             var stdout = Console.OpenStandardOutput();
-            var up = PumpAsync(stdin, pipe, linked.Token);
-            var down = PumpAsync(pipe, stdout, linked.Token);
-            await Task.WhenAny(up, down).ConfigureAwait(false);
+            var tracker = new PendingRequestTracker();
+            var up = PumpAsync(stdin, pipe, linked.Token, tracker.ObserveUpstream);
+            var down = PumpAsync(pipe, stdout, linked.Token, tracker.ObserveDownstream);
+            var first = await Task.WhenAny(up, down).ConfigureAwait(false);
+            if (first == up)
+            {
+                // The client closed stdin (a one-shot "type requests | Shim"): keep delivering the responses still
+                // in flight. Wait until none is pending, the Host side ends, or the longest tool timeout (600 s) passed.
+                var deadline = DateTime.UtcNow + DrainCap;
+                while (!down.IsCompleted && tracker.PendingCount > 0 && DateTime.UtcNow < deadline && !ct.IsCancellationRequested)
+                {
+                    await Task.WhenAny(down, Task.Delay(100, CancellationToken.None)).ConfigureAwait(false);
+                }
+            }
+
             linked.Cancel();
         }
 
-        private static async Task PumpAsync(Stream from, Stream to, CancellationToken ct)
+        private static readonly TimeSpan DrainCap = TimeSpan.FromMinutes(11);
+
+        private delegate void ObserveBytes(ReadOnlySpan<byte> bytes);
+
+        private static async Task PumpAsync(Stream from, Stream to, CancellationToken ct, ObserveBytes observe)
         {
             var buffer = new byte[64 * 1024];
             try
@@ -172,6 +188,7 @@ namespace RevitAgent.Shim
                 int n;
                 while ((n = await from.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
                 {
+                    observe(buffer.AsSpan(0, n));
                     await to.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
                     await to.FlushAsync(ct).ConfigureAwait(false);
                 }

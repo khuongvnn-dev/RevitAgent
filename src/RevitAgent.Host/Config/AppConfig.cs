@@ -7,17 +7,23 @@ using RevitAgent.Contracts.Protocol;
 /// </summary>
 public sealed class AppConfig
 {
-    private string _language = "vi-VN";
+    private string _language = DefaultLanguage;
     private string _themeMode = "System";
 
     /// <summary>
-    /// UI Language culture code (e.g. "vi-VN" or "en-US"). Defaults to "vi-VN".
+    /// UI Language culture code (e.g. "vi-VN" or "en-US"). Defaults to <see cref="DefaultLanguage"/>.
     /// </summary>
     public string Language
     {
-        get => string.IsNullOrWhiteSpace(_language) ? "vi-VN" : _language;
-        set => _language = string.IsNullOrWhiteSpace(value) ? "vi-VN" : value;
+        get => string.IsNullOrWhiteSpace(_language) ? DefaultLanguage : _language;
+        set => _language = string.IsNullOrWhiteSpace(value) ? DefaultLanguage : value;
     }
+
+    /// <summary>English-first: "vi-VN" only when the OS UI culture is Vietnamese, otherwise "en-US".</summary>
+    public static string DefaultLanguage => DefaultLanguageFor(System.Globalization.CultureInfo.CurrentUICulture);
+
+    public static string DefaultLanguageFor(System.Globalization.CultureInfo culture) =>
+        string.Equals(culture.TwoLetterISOLanguageName, "vi", StringComparison.OrdinalIgnoreCase) ? "vi-VN" : "en-US";
 
     /// <summary>
     /// UI Theme Mode ("System", "Dark", "Light"). Defaults to "System".

@@ -16,6 +16,13 @@ public sealed record HumanQuestion(
     /// <summary>Text sent to the owner when the question is cancelled by the caller (e.g. answered elsewhere); evaluated at cancel time.</summary>
     [JsonIgnore]
     public Func<string>? CancelNote { get; init; }
+
+    /// <summary>
+    /// True for owner approvals: the question is not queued behind a pending human_ask (which can stay open for hours and
+    /// would starve the approval until it auto-denied). Concurrent questions are told apart by their callback ids.
+    /// </summary>
+    [JsonIgnore]
+    public bool BypassQueue { get; init; }
 }
 
 /// <summary>Reason strings of <see cref="HumanAnswer"/> that callers rely on.</summary>

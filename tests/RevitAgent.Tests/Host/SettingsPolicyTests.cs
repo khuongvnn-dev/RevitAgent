@@ -39,7 +39,7 @@ public class SettingsPolicyTests
     }
 
     [Fact]
-    public void GatewayPolicySettings_Apply_UsesConfigAndFallsBackToAdminForUnknownText()
+    public void GatewayPolicySettings_Apply_UsesConfigAndFailsClosedToReadForUnknownText()
     {
         var policy = new GatewayPolicy { MaxPermission = ToolPermission.Read, EnforceSandbox = false };
         GatewayPolicySettings.Apply(new AppConfig { GatewayMaxPermission = "write", GatewayEnforceSandbox = true }, policy);
@@ -47,10 +47,14 @@ public class SettingsPolicyTests
         Assert.True(policy.EnforceSandbox);
 
         GatewayPolicySettings.Apply(new AppConfig { GatewayMaxPermission = "nonsense" }, policy);
-        Assert.Equal(ToolPermission.Admin, policy.MaxPermission);
+        Assert.Equal(ToolPermission.Read, policy.MaxPermission);
 
         GatewayPolicySettings.Apply(new AppConfig { GatewayMaxPermission = "7" }, policy);
-        Assert.Equal(ToolPermission.Admin, policy.MaxPermission);
+        Assert.Equal(ToolPermission.Read, policy.MaxPermission);
+
+        // Null or empty text keeps the deliberate default.
+        Assert.Equal(ToolPermission.Admin, GatewayPolicySettings.ParsePermission(null));
+        Assert.Equal(ToolPermission.Admin, GatewayPolicySettings.ParsePermission(""));
     }
 
     [Fact]

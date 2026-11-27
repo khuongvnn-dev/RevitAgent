@@ -92,6 +92,29 @@ public sealed class EncryptedConfigManager
     }
 
     /// <summary>
+    /// Moves an unreadable configuration file aside as <c>&lt;name&gt;.bad-yyyyMMdd-HHmmss</c> so the app can start with
+    /// defaults without losing the evidence. Returns the new path, or null when there was nothing to move or it failed.
+    /// </summary>
+    public string? QuarantineConfigFile(DateTime? now = null)
+    {
+        try
+        {
+            if (!File.Exists(ConfigFilePath))
+            {
+                return null;
+            }
+
+            var target = $"{ConfigFilePath}.bad-{(now ?? DateTime.Now):yyyyMMdd-HHmmss}";
+            File.Move(ConfigFilePath, target, overwrite: true);
+            return target;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Loads and decrypts the configuration from disk. If file does not exist, returns default configuration.
     /// </summary>
     /// <exception cref="CryptographicException">Thrown if DPAPI decryption fails or payload is corrupted.</exception>
