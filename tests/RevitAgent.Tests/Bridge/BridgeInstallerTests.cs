@@ -190,6 +190,35 @@ public class BridgeInstallerTests
     }
 
     [Fact]
+    public void CorruptManifestWithOurFileName_IsOverwrittenOnInstall_AndRemovedOnUninstall()
+    {
+        var s = new Sandbox();
+        Directory.CreateDirectory(Path.GetDirectoryName(s.Manifest(2024))!);
+        File.WriteAllText(s.Manifest(2024), "<RevitAddIns><AddIn");
+        var r = R(s.Installer.Install(new[] { 2024 })[0]);
+        Assert.Equal(true, r["ok"]);
+        Assert.Contains(BridgeWire.AddInId, File.ReadAllText(s.Manifest(2024)), StringComparison.OrdinalIgnoreCase);
+
+        File.WriteAllText(s.Manifest(2024), "<RevitAddIns><AddIn");
+        var u = s.Installer.Uninstall(new[] { 2024 }).Select(R).Single();
+        Assert.Equal(true, u["ok"]);
+        Assert.False(File.Exists(s.Manifest(2024)));
+    }
+
+    [Fact]
+    public void CorruptFileWithAnotherName_IsNeverTreatedAsOurs()
+    {
+        var s = new Sandbox();
+        var dir = Path.Combine(s.Addins, "2024");
+        Directory.CreateDirectory(dir);
+        var other = Path.Combine(dir, "Other.addin");
+        File.WriteAllText(other, "<RevitAddIns><AddIn");
+        s.Installer.Install(new[] { 2024 });
+        s.Installer.Uninstall(new[] { 2024 });
+        Assert.True(File.Exists(other));
+    }
+
+    [Fact]
     public void Install_ReportsMissingYearOrBuild_PerYear_WithoutStoppingOthers()
     {
         var s = new Sandbox();

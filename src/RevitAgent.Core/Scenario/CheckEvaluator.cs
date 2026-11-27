@@ -356,16 +356,12 @@ public sealed class CheckEvaluator
             return root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().ToList() : new List<JsonElement> { root };
         }
 
-        // A misspelled top-level field must not count as "0 found" (count(...) == 0 would PASS on a typo).
-        if (root.ValueKind == JsonValueKind.Object && !TryProperty(root, src.Segments[0].Name, out _))
-        {
-            throw new MissingDataException($"'{src.Segments[0].Name}' is not in {Path.GetFileName(file)} (wrong field name?)");
-        }
-
-        var items = new List<JsonElement> { root };
+        // An array root is flattened first, so its elements are what the first segment is looked up in.
+        var items = root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().ToList() : new List<JsonElement> { root };
         foreach (var seg in src.Segments)
         {
             var next = new List<JsonElement>();
+            var seen = false;
             foreach (var it in items)
             {
                 if (!TryProperty(it, seg.Name, out var v))
@@ -373,6 +369,7 @@ public sealed class CheckEvaluator
                     continue;
                 }
 
+                seen = true;
                 if (seg.Brackets || v.ValueKind == JsonValueKind.Array)
                 {
                     var elems = v.ValueKind == JsonValueKind.Array ? v.EnumerateArray() : (IEnumerable<JsonElement>)new[] { v };
@@ -382,6 +379,13 @@ public sealed class CheckEvaluator
                 {
                     next.Add(v);
                 }
+            }
+
+            // A misspelled field, at any depth, must not count as "0 found" (count(...) == 0 would PASS on a typo).
+            // A field that exists but whose items are all filtered out is a real empty result.
+            if (!seen && items.Count > 0)
+            {
+                throw new MissingDataException($"'{seg.Name}' is not in {Path.GetFileName(file)} (wrong field name?)");
             }
 
             items = next;

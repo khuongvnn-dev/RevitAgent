@@ -243,6 +243,17 @@ public class MacroLoaderTests
         Assert.Equal(expected, MacroTemplate.IsTruthy(present, value));
     }
 
+    [Fact]
+    public void WholeTemplate_DoesNotMatchBeforeATrailingNewline()
+    {
+        var scope = new MacroScope();
+        scope.Set("n", JsonValue.Create(7L));
+        Assert.True(MacroTemplate.TryResolve("${n}\n", scope, out var withNewline));
+        Assert.Equal(JsonValueKind.String, withNewline!.GetValueKind());
+        Assert.True(MacroTemplate.TryResolve("${n}", scope, out var whole));
+        Assert.Equal(JsonValueKind.Number, whole!.GetValueKind());
+    }
+
     [Theory]
     [InlineData("integer", "\"12\"", "12")]
     [InlineData("integer", "12.0", "12")]
@@ -260,6 +271,9 @@ public class MacroLoaderTests
     [Theory]
     [InlineData("integer", "\"abc\"")]
     [InlineData("integer", "1.5")]
+    [InlineData("number", "\"NaN\"")]
+    [InlineData("number", "\"Infinity\"")]
+    [InlineData("number", "\"-Infinity\"")]
     [InlineData("boolean", "\"maybe\"")]
     [InlineData("array", "{\"a\":1}")]
     [InlineData("string", "{\"a\":1}")]

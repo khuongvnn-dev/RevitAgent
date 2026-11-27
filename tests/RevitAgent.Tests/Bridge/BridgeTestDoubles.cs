@@ -122,12 +122,12 @@ internal sealed class FakeExecutor : IBridgeExecutor
 
     public ConcurrentQueue<FakeWork> Scheduled { get; } = new();
 
-    public IReadOnlyCollection<string> ToolNames { get; } = new[] { "ping", "events", "echo", "slow", "fail", "boom" };
+    public IReadOnlyCollection<string> ToolNames { get; } = new[] { "ping", "events", "echo", "slow", "fail", "boom", "big" };
 
     public BridgeToolKind GetKind(string tool) => tool switch
     {
         "ping" or "events" => BridgeToolKind.Immediate,
-        "echo" or "slow" or "fail" or "boom" => BridgeToolKind.Revit,
+        "echo" or "slow" or "fail" or "boom" or "big" => BridgeToolKind.Revit,
         _ => BridgeToolKind.Unknown,
     };
 
@@ -140,6 +140,7 @@ internal sealed class FakeExecutor : IBridgeExecutor
         {
             "echo" => new WireObject { { "echo", args }, { "thread", Thread.CurrentThread.Name } },
             "slow" => Slow(),
+            "big" => new WireObject { { "blob", new string('x', 33 * 1024 * 1024) } },
             "fail" => throw new BridgeToolException(GatewayErrorCodes.NotFound, "No such element 42.", new WireObject { { "id", 42L } }),
             _ => throw new InvalidOperationException("secret internal detail at C:\\stack\\trace.cs:line 1"),
         });

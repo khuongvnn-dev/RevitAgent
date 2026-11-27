@@ -181,7 +181,7 @@ public static class MacroLoader
                 break;
             case MacroTypes.Number:
                 var numberText = kind switch { JsonValueKind.Number => value.ToJsonString(), JsonValueKind.String => value.GetValue<string>().Trim(), _ => null };
-                if (double.TryParse(numberText, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                if (double.TryParse(numberText, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) && double.IsFinite(d))
                 {
                     return kind == JsonValueKind.Number ? value.DeepClone() : JsonValue.Create(d);
                 }

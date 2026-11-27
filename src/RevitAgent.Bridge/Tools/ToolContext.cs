@@ -226,7 +226,7 @@ namespace RevitAgent.Bridge.Tools
             {
                 return ActiveDocument ?? throw new BridgeToolException(
                     GatewayErrorCodes.TargetNotReady,
-                    "No document is open in this Revit. Open a sandbox copy with doc_open first (doc_list_open shows what is open).");
+                    "No document is open in this Revit. Open a sandbox copy with doc_open first.");
             }
 
             var doc = FindOpenDocument(key, exactPath);

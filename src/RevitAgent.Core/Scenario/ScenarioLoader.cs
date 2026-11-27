@@ -16,6 +16,14 @@ public sealed class ScenarioLoadResult
     public bool HasErrors => Issues.Any(i => i.Severity == IssueSeverity.Error);
 }
 
+/// <summary>A YAML document expands past the node or depth caps (typically an alias bomb).</summary>
+public sealed class YamlTooLargeException : ArgumentException
+{
+    public YamlTooLargeException(string message) : base(message)
+    {
+    }
+}
+
 /// <summary>
 /// Reads <c>scenario.yaml</c> with YamlDotNet's representation model (keeps line numbers for findings).
 /// Plain YAML scalars become JSON numbers/booleans/null; quoted scalars stay strings, so
@@ -59,6 +67,13 @@ public static class ScenarioLoader
             return missing;
         }
 
+        if (new FileInfo(scenarioPath).Length > MaxFileBytes)
+        {
+            var big = new ScenarioLoadResult();
+            big.Issues.Add(ScenarioIssue.Error("scenario-too-large", $"{ScenarioDefinition.FileName} is larger than {MaxFileBytes / 1024} KB; {TooLargeMessage}.", ScenarioDefinition.FileName, 1));
+            return big;
+        }
+
         return Parse(File.ReadAllText(scenarioPath), dir, scenarioPath);
     }
 
@@ -68,6 +83,26 @@ public static class ScenarioLoader
         var result = new ScenarioLoadResult();
         var file = ScenarioDefinition.FileName;
 
+        if (yaml.Length > MaxFileBytes)
+        {
+            result.Issues.Add(ScenarioIssue.Error("scenario-too-large", $"{file} is larger than {MaxFileBytes / 1024} KB; {TooLargeMessage}.", file, 1));
+            return result;
+        }
+
+        try
+        {
+            return ParseCore(yaml, scenarioDir, scenarioPath, result, file);
+        }
+        catch (YamlTooLargeException ex)
+        {
+            result.Issues.Add(ScenarioIssue.Error("scenario-too-large", $"{ex.Message}: more than {MaxNodes} values or deeper than {MaxDepth} levels.", file, 1));
+            result.Scenario = null;
+            return result;
+        }
+    }
+
+    private static ScenarioLoadResult ParseCore(string yaml, string scenarioDir, string scenarioPath, ScenarioLoadResult result, string file)
+    {
         var stream = new YamlStream();
         try
         {
@@ -89,6 +124,8 @@ public static class ScenarioLoader
             result.Issues.Add(ScenarioIssue.Error("yaml-root", "scenario.yaml must be a YAML mapping (key: value lines).", file, 1));
             return result;
         }
+
+        MeasureExpansion(root, new Dictionary<YamlNode, long>(ReferenceEqualityComparer.Instance), 0);
 
         string? name = null, description = null, model = null;
         int? revitVersion = null;
@@ -267,21 +304,84 @@ public static class ScenarioLoader
         return result;
     }
 
-    /// <summary>Converts a YAML node into JSON (plain scalars typed, quoted scalars strings).</summary>
-    public static JsonNode? ToJson(YamlNode node) => node switch
-    {
-        YamlScalarNode s => ScalarToJson(s),
-        YamlSequenceNode seq => new JsonArray(seq.Children.Select(ToJson).ToArray()),
-        YamlMappingNode map => ToJsonObject(map),
-        _ => null,
-    };
+    /// <summary>Largest scenario.yaml accepted, in bytes.</summary>
+    public const int MaxFileBytes = 1024 * 1024;
 
-    private static JsonObject ToJsonObject(YamlMappingNode map)
+    /// <summary>Most JSON nodes one YAML document may expand to (YAML aliases share nodes, so this bounds alias bombs).</summary>
+    public const int MaxNodes = 100_000;
+
+    /// <summary>Deepest YAML nesting accepted.</summary>
+    public const int MaxDepth = 64;
+
+    private const string TooLargeMessage = "scenario too large or too deeply nested (YAML aliases expand)";
+
+    /// <summary>Converts a YAML node into JSON (plain scalars typed, quoted scalars strings). Throws <see cref="YamlTooLargeException"/> past the node and depth caps.</summary>
+    public static JsonNode? ToJson(YamlNode node) => ToJson(node, new Budget(), 0);
+
+    /// <summary>
+    /// Size of the document once aliases are expanded, memoised per node so a billion-laughs chain is measured in
+    /// linear time. Throws past the node or depth cap, before any step or check is converted.
+    /// </summary>
+    private static long MeasureExpansion(YamlNode node, Dictionary<YamlNode, long> memo, int depth)
     {
+        if (depth > MaxDepth)
+        {
+            throw new YamlTooLargeException(TooLargeMessage);
+        }
+
+        if (memo.TryGetValue(node, out var known))
+        {
+            return known;
+        }
+
+        long total = 1;
+        IEnumerable<YamlNode> children = node switch
+        {
+            YamlSequenceNode seq => seq.Children,
+            YamlMappingNode map => map.Children.SelectMany(kv => new[] { kv.Key, kv.Value }),
+            _ => Array.Empty<YamlNode>(),
+        };
+        foreach (var child in children)
+        {
+            total += MeasureExpansion(child, memo, depth + 1);
+            if (total > MaxNodes)
+            {
+                throw new YamlTooLargeException(TooLargeMessage);
+            }
+        }
+
+        memo[node] = total;
+        return total;
+    }
+
+    private sealed class Budget
+    {
+        public int Nodes;
+    }
+
+    private static JsonNode? ToJson(YamlNode node, Budget budget, int depth)
+    {
+        if (++budget.Nodes > MaxNodes || depth > MaxDepth)
+        {
+            throw new YamlTooLargeException(TooLargeMessage);
+        }
+
+        return node switch
+        {
+            YamlScalarNode s => ScalarToJson(s),
+            YamlSequenceNode seq => new JsonArray(seq.Children.Select(c => ToJson(c, budget, depth + 1)).ToArray()),
+            YamlMappingNode map => ToJsonObject(map, budget, depth),
+            _ => null,
+        };
+    }
+
+    private static JsonObject ToJsonObject(YamlMappingNode map, Budget? budget = null, int depth = 0)
+    {
+        budget ??= new Budget();
         var o = new JsonObject();
         foreach (var (k, v) in map.Children)
         {
-            o[(k as YamlScalarNode)?.Value ?? k.ToString()] = ToJson(v);
+            o[(k as YamlScalarNode)?.Value ?? k.ToString()] = ToJson(v, budget, depth + 1);
         }
 
         return o;

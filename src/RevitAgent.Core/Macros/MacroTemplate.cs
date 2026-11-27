@@ -100,7 +100,7 @@ public static class MacroPath
 public static class MacroTemplate
 {
     private static readonly Regex Token = new(@"\$\{([^{}]*)\}", RegexOptions.Compiled);
-    private static readonly Regex Whole = new(@"^\$\{([^{}]*)\}$", RegexOptions.Compiled);
+    private static readonly Regex Whole = new(@"^\$\{([^{}]*)\}\z", RegexOptions.Compiled);
     private static readonly Regex RootName = new("^[a-z][a-z0-9_]*$", RegexOptions.Compiled);
 
     /// <summary>Template expressions used in <paramref name="text"/> (without <c>${ }</c>).</summary>

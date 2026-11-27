@@ -89,6 +89,7 @@ returns:
 
 - Parameter types: `string | integer | number | boolean | array`. A required parameter must not have a `default`.
 - Templates: `${param}` or `${stepId.path.to.value}` (`[0]` for an array element, for example `${find.items[0].command_id}`). A string that is **only** one template keeps the JSON type; any other string is concatenated text (`"n=${read.body.data_rows}"`).
+- A literal `${` cannot be written in a macro string (a stray `${` is a load error).
 - A missing value (parameter not given, step skipped, path not found) makes that key or element **disappear** from the args, so the tool uses its own default.
 - Checks at load: unique names; every template points to a declared parameter or an **earlier** step (`returns` sees every step); unknown keys are errors; a step may not call `macro_*`. A broken macro is skipped and reported by `macro_list` (`load_errors`).
 

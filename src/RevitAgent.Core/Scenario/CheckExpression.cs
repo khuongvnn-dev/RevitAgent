@@ -30,6 +30,12 @@ public sealed class CheckExpressionException : Exception
 /// </summary>
 public sealed class CheckExpression
 {
+    /// <summary>Longest accepted expression, in characters.</summary>
+    public const int MaxLength = 4000;
+
+    /// <summary>Deepest nesting of parentheses and <c>not</c> (deep recursion would be an uncatchable StackOverflow).</summary>
+    public const int MaxNesting = 64;
+
     public static readonly IReadOnlyList<string> Functions = new[] { "count", "value", "step_ok", "has_line", "no_line" };
 
     private static readonly Regex NumberLiteral = new(@"^-?\d+(?:\.\d+)?$", RegexOptions.Compiled);
@@ -51,6 +57,11 @@ public sealed class CheckExpression
         if (string.IsNullOrWhiteSpace(text))
         {
             throw new CheckExpressionException("expect is empty");
+        }
+
+        if (text.Length > MaxLength)
+        {
+            throw new CheckExpressionException($"expect is too long ({text.Length} characters; the limit is {MaxLength})");
         }
 
         var parser = new Parser(text);
@@ -313,6 +324,7 @@ public sealed class CheckExpression
         private readonly string _src;
         private readonly List<Token> _tokens;
         private int _pos;
+        private int _depth;
 
         public Parser(string src)
         {
@@ -370,6 +382,23 @@ public sealed class CheckExpression
         }
 
         private Node ParseFactor()
+        {
+            if (++_depth > MaxNesting)
+            {
+                throw Fail($"expression is nested too deeply (limit {MaxNesting} levels of parentheses / not)");
+            }
+
+            try
+            {
+                return ParseFactorCore();
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        private Node ParseFactorCore()
         {
             var start = Peek.Start;
             if (IsWord("not"))

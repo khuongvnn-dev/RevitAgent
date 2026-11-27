@@ -174,7 +174,7 @@ public sealed class BridgeClient
             }
 
             throw GatewayException.Dependency(
-                $"The RevitAgent Bridge pipe of Revit pid {pid} exists but did not accept a connection within {_options.ConnectTimeout.TotalSeconds:0}s. Revit may be hung or still starting; check revit_get_state and retry.",
+                $"The RevitAgent Bridge pipe of Revit pid {pid} exists but did not accept a connection within {_options.ConnectTimeout.TotalSeconds:0}s. Revit may be hung or still starting; check revit_list_dialogs and retry.",
                 new { pid, pipe = pipeName });
         }
         catch (UnauthorizedAccessException)

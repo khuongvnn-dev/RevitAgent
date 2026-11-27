@@ -6,6 +6,7 @@ namespace RevitAgent.Contracts.Bridge.Wire
     using System.Globalization;
     using System.IO;
     using System.IO.Pipes;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using RevitAgent.Contracts.Protocol;
@@ -401,6 +402,22 @@ namespace RevitAgent.Contracts.Bridge.Wire
                 }
 
                 _log.Info("<- " + tool + " id=" + id + " " + error.Code + " " + sw.ElapsedMilliseconds + " ms: " + Clip(error.Message, LogArgsChars));
+            }
+
+            var responseBytes = Encoding.UTF8.GetByteCount(response);
+            if (responseBytes > BridgeWire.MaxPayloadBytes)
+            {
+                // WireFraming would throw and the connection would close; answer with a clear error instead.
+                var mb = (responseBytes + 1024 * 1024 - 1) / (1024 * 1024);
+                var limitMb = BridgeWire.MaxPayloadBytes / (1024 * 1024);
+                var message = "result too large (" + mb + " MB > " + limitMb + " MB); lower limit or narrow the query";
+                _log.Info("<- " + tool + " id=" + id + " " + GatewayErrorCodes.ValidationFailed + ": " + message);
+                response = WireJson.Serialize(new WireObject
+                {
+                    { "id", id },
+                    { "ok", false },
+                    { "error", new WireObject { { "code", GatewayErrorCodes.ValidationFailed }, { "message", message } } },
+                });
             }
 
             return response;

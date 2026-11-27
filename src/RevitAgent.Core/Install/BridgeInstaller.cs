@@ -465,8 +465,15 @@ public sealed class BridgeInstaller
             var first = addins.FirstOrDefault();
             return new ManifestInfo(ids.FirstOrDefault(), first?.Elements().FirstOrDefault(e => e.Name.LocalName == "Assembly")?.Value.Trim(), ids);
         }
-        catch (XmlException)
+        catch (XmlException ex)
         {
+            if (string.Equals(Path.GetFileName(path), BridgeWire.ManifestFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                // Exactly our own file name but unreadable: it is ours to repair (install overwrites, uninstall removes).
+                Trace.TraceWarning($"RevitAgent: {path} is corrupt ({ex.Message}); treating it as the RevitAgent manifest.");
+                return new ManifestInfo(BridgeWire.AddInId, null, new[] { BridgeWire.AddInId });
+            }
+
             return new ManifestInfo(null, null, Array.Empty<string>());
         }
     }

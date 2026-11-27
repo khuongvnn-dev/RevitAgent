@@ -120,6 +120,19 @@ public class BridgeEndToEndTests
     }
 
     [Fact]
+    public async Task OversizedResult_BecomesAnErrorResponse_AndTheConnectionSurvives()
+    {
+        using var h = new BridgeHarness();
+        var ex = await Assert.ThrowsAsync<GatewayException>(() => h.Client.CallAsync(BridgeHarness.Pid, "big", null, TimeSpan.FromSeconds(30), CancellationToken.None));
+        Assert.Equal(GatewayErrorCodes.ValidationFailed, ex.Code);
+        Assert.Contains("result too large", ex.Message);
+        Assert.Contains("32 MB", ex.Message);
+
+        var after = await h.Client.CallAsync(BridgeHarness.Pid, "echo", null, TimeSpan.FromSeconds(10), CancellationToken.None);
+        Assert.True(after.TryGetProperty("echo", out _));
+    }
+
+    [Fact]
     public async Task ServerCore_HandlesMalformedRequests()
     {
         using var h = new BridgeHarness();

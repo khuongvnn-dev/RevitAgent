@@ -202,13 +202,13 @@ public sealed class SandboxService
         var id = (runId ?? string.Empty).Trim();
         if (!RunIdPattern.IsMatch(id) || id.Contains("..", StringComparison.Ordinal))
         {
-            throw GatewayException.Validation($"run_id '{runId}' is not a valid run id (a folder name under the runs folder, e.g. 20261120-031500-my-test). Use sandbox_list_runs.");
+            throw GatewayException.Validation($"run_id '{runId}' is not a valid run id (a folder name under the runs folder, e.g. 20261120-031500-my-test).");
         }
 
         var dir = EnsureUnderRuns(System.IO.Path.Combine(RunsDir, id), "Run folder");
         if (!Directory.Exists(dir))
         {
-            throw GatewayException.NotFound($"Run '{id}' does not exist. Create one with sandbox_create_run or list them with sandbox_list_runs.");
+            throw GatewayException.NotFound($"Run '{id}' does not exist. sandbox_copy_model creates a run when run_id is omitted.");
         }
 
         return dir;

@@ -294,6 +294,7 @@ public sealed class RunStore
         var runId = $"{now:HHmmss}_{slug}_{id6}";
         var relativeRunDir = Path.Combine(now.ToString("yyyy-MM", CultureInfo.InvariantCulture), now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), runId);
 
+        Directory.CreateDirectory(RootDir);
         var indexEntry = new JsonObject
         {
             ["id"] = runId,
@@ -322,25 +323,31 @@ public sealed class RunStore
     public string ResolveRunDir(string runId)
     {
         var id = (runId ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(id) || id.Contains("..", StringComparison.Ordinal))
+        var simpleId = SafeIdPattern.IsMatch(id);
+        if (!simpleId && !IsRelativeRunPath(id))
         {
-            throw GatewayException.Validation($"run_id '{runId}' is not a valid run id.");
+            throw GatewayException.Validation($"run_id '{runId}' is not a valid run id (a folder name, or yyyy-MM/yyyy-MM-dd/<id>).");
         }
 
-        var root = RootDir;
+        var root = Path.GetFullPath(RootDir);
 
-        // Check if runId is already a relative path under root
-        var directPath = Path.GetFullPath(Path.Combine(root, id));
-        if (Directory.Exists(directPath) && directPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        if (!simpleId)
         {
-            return directPath;
+            // Relative <yyyy-MM>\<yyyy-MM-dd>\<id> form, every segment already validated.
+            var relPath = Path.GetFullPath(Path.Combine(root, id.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
+            if (IsUnderRoot(root, relPath) && Directory.Exists(relPath))
+            {
+                return relPath;
+            }
+
+            throw GatewayException.NotFound($"Run '{id}' does not exist in the run store ({root}).");
         }
 
         // Check old-layout directly under root: <root>\<runId>
-        var oldLayout = Path.Combine(root, id);
-        if (Directory.Exists(oldLayout))
+        var oldLayout = Path.GetFullPath(Path.Combine(root, id));
+        if (IsUnderRoot(root, oldLayout) && Directory.Exists(oldLayout))
         {
-            return Path.GetFullPath(oldLayout);
+            return oldLayout;
         }
 
         // Check new layout for today: <root>\<yyyy-MM>\<yyyy-MM-dd>\<runId>
@@ -365,7 +372,7 @@ public sealed class RunStore
                         if (doc.RootElement.TryGetProperty("run_dir", out var dirProp) && dirProp.GetString() is { Length: > 0 } rel)
                         {
                             var resolved = Path.GetFullPath(Path.Combine(root, rel));
-                            if (Directory.Exists(resolved))
+                            if (IsUnderRoot(root, resolved) && Directory.Exists(resolved))
                             {
                                 return resolved;
                             }
@@ -389,7 +396,7 @@ public sealed class RunStore
                     foreach (var dayDir in Directory.EnumerateDirectories(monthDir, "????-??-??"))
                     {
                         var candidate = Path.Combine(dayDir, id);
-                        if (Directory.Exists(candidate))
+                        if (IsUnderRoot(root, Path.GetFullPath(candidate)) && Directory.Exists(candidate))
                         {
                             return Path.GetFullPath(candidate);
                         }
@@ -405,14 +412,30 @@ public sealed class RunStore
         // Fallback: check default paths.RunsDir if RootDir was changed
         if (!string.Equals(root, _paths.RunsDir, StringComparison.OrdinalIgnoreCase) && Directory.Exists(_paths.RunsDir))
         {
-            var fallbackPath = Path.Combine(_paths.RunsDir, id);
-            if (Directory.Exists(fallbackPath))
+            var fallbackPath = Path.GetFullPath(Path.Combine(_paths.RunsDir, id));
+            if (IsUnderRoot(Path.GetFullPath(_paths.RunsDir), fallbackPath) && Directory.Exists(fallbackPath))
             {
-                return Path.GetFullPath(fallbackPath);
+                return fallbackPath;
             }
         }
 
         throw GatewayException.NotFound($"Run '{id}' does not exist in the run store ({root}).");
+    }
+
+    private static readonly Regex MonthPattern = new(@"^\d{4}-\d{2}$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex DayPattern = new(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    /// <summary>True for the relative <c>yyyy-MM\yyyy-MM-dd\&lt;id&gt;</c> form (either slash); rooted, drive and UNC paths never match.</summary>
+    private static bool IsRelativeRunPath(string id)
+    {
+        var parts = id.Split('/', '\\');
+        return parts.Length == 3 && MonthPattern.IsMatch(parts[0]) && DayPattern.IsMatch(parts[1]) && SafeIdPattern.IsMatch(parts[2]);
+    }
+
+    private static bool IsUnderRoot(string root, string fullPath)
+    {
+        var prefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
